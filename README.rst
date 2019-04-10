@@ -4,7 +4,8 @@
 Introduction
 ============
 
-### INTRODUCTION ###
+The package `ftw.catalogdoctor` provides checkup and surgery to remove inconsistencies in portal_catalog.
+
 
 Compatibility
 -------------
