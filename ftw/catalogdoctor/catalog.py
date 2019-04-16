@@ -22,8 +22,9 @@ class RidAberration(object):
 class CatalogCheckup(object):
     """Provide health checkup for a Products.ZCatalog.Catalog instance.
 
-    Validates that the catalogs uid and rid mapping is consistent. This means
-    that:
+    Validates that the catalogs uid and rid mapping and metadata is consistent.
+    This means that:
+    - the mappings have the same length
     - the mappings are consistent, so every item is in the reverse mapping
     - for every item there is also an entry in the catalog metadata
 
@@ -48,6 +49,11 @@ class CatalogCheckup(object):
             self.aberrations[rid] = RidAberration(rid, path=path)
         return self.aberrations[rid]
 
+    def report_symptom(self, name, rid, path=None):
+        aberration = self.report_aberration(rid, path=path)
+        aberration.report_catalog_symptom(name)
+        return aberration
+
     def get_symptoms(self, rid):
         return self.aberrations[rid].catalog_symptoms
 
@@ -60,41 +66,40 @@ class CatalogCheckup(object):
 
         for path, rid in uids.items():
             if rid not in paths:
-                aberration = self.report_aberration(rid, path=path)
-                aberration.report_catalog_symptom('in_uids_values_not_in_paths_keys')
+                self.report_symptom(
+                    'in_uids_values_not_in_paths_keys', rid, path=path)
             elif paths[rid] != path:
-                aberration = self.report_aberration(rid, path=path)
-                aberration.report_catalog_symptom('paths_tuple_mismatches_uids_tuple')
+                self.report_symptom(
+                    'paths_tuple_mismatches_uids_tuple', rid, path=path)
 
             if path not in paths_values:
-                aberration = self.report_aberration(rid)
-                aberration.report_catalog_symptom('in_uids_keys_not_in_paths_values')
+                self.report_symptom(
+                    'in_uids_keys_not_in_paths_values', rid, path=path)
 
             if rid not in self.catalog.data:
-                aberration = self.report_aberration(rid, path=path)
-                aberration.report_catalog_symptom('in_uids_values_not_in_metadata_keys')
+                self.report_symptom(
+                    'in_uids_values_not_in_metadata_keys', rid, path=path)
 
         for rid, path in paths.items():
             if path not in uids:
-                aberration = self.report_aberration(rid, path=path)
-                aberration.report_catalog_symptom('in_paths_values_not_in_uids_keys')
+                self.report_symptom(
+                    'in_paths_values_not_in_uids_keys', rid, path=path)
             elif uids[path] != rid:
-                aberration = self.report_aberration(rid, path=path)
-                aberration.report_catalog_symptom('uids_tuple_mismatches_paths_tuple')
+                self.report_symptom(
+                    'uids_tuple_mismatches_paths_tuple', rid, path=path)
 
             if rid not in uids_values:
-                aberration = self.report_aberration(rid, path=path)
-                aberration.report_catalog_symptom('in_paths_keys_not_in_uids_values')
+                self.report_symptom(
+                    'in_paths_keys_not_in_uids_values', rid, path=path)
 
             if rid not in self.catalog.data:
-                aberration = self.report_aberration(rid, path=path)
-                aberration.report_catalog_symptom('in_paths_keys_not_in_metadata_keys')
+                self.report_symptom(
+                    'in_paths_keys_not_in_metadata_keys', rid, path=path)
 
         for rid in self.catalog.data:
             if rid not in paths:
-                aberration = self.report_aberration(rid)
-                aberration.report_catalog_symptom('in_metadata_keys_not_in_paths_keys')
+                self.report_symptom(
+                    'in_metadata_keys_not_in_paths_keys', rid)
             if rid not in uids_values:
-                aberration = self.report_aberration(rid)
-                aberration.report_catalog_symptom('in_metadata_keys_not_in_uids_values')
-
+                self.report_symptom(
+                    'in_metadata_keys_not_in_uids_values', rid)
