@@ -22,6 +22,38 @@ class TestCatalogCheckup(FunctionalTestCase):
         checkup = self.run_checkup()
 
         self.assertTrue(checkup.is_healthy())
+        self.assertTrue(checkup.is_length_healthy())
+
+    def test_aberrations_make_catalog_unhealthy(self):
+        checkup = self.run_checkup()
+        self.assertTrue(checkup.is_healthy())
+
+        checkup.report_aberration(self.choose_next_rid())
+        self.assertFalse(checkup.is_healthy())
+
+    def test_longer_uids_make_catalog_unhealthy(self):
+        checkup = self.run_checkup()
+        self.assertTrue(checkup.is_length_healthy())
+
+        checkup.catalog.uids['foo'] = self.choose_next_rid()
+
+        self.assertFalse(checkup.is_length_healthy())
+
+    def test_longer_paths_make_catalog_unhealthy(self):
+        checkup = self.run_checkup()
+        self.assertTrue(checkup.is_length_healthy())
+
+        checkup.catalog.paths[self.choose_next_rid()] = 'foo'
+
+        self.assertFalse(checkup.is_length_healthy())
+
+    def test_longer_metadata_make_catalog_unhealthy(self):
+        checkup = self.run_checkup()
+        self.assertTrue(checkup.is_length_healthy())
+
+        checkup.catalog.data[self.choose_next_rid()] = dict()
+
+        self.assertFalse(checkup.is_length_healthy())
 
     def test_detects_duplicate_entry_in_rid_to_path_mapping_keys(self):
         broken_rid = self.choose_next_rid()

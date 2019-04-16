@@ -40,7 +40,14 @@ class CatalogCheckup(object):
     def is_healthy(self):
         """Return whether the catalog is healthy according to this checkup."""
 
-        return not self.aberrations
+        return not self.aberrations and self.is_length_healthy()
+
+    def is_length_healthy(self):
+        return (
+            len(self.catalog.paths)
+            == len(self.catalog.uids)
+            == len(self.catalog.data)
+        )
 
     def report_aberration(self, rid, path=None):
         """Report an aberration for a rid."""
