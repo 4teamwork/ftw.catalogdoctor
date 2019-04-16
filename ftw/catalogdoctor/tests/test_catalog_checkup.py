@@ -65,6 +65,23 @@ class TestCatalogCheckup(FunctionalTestCase):
             },
             result.get_symptoms(broken_rid))
 
+    def test_detects_extra_entry_in_rid_to_path_mapping(self):
+        extra_rid = self.choose_next_rid()
+        self.catalog.paths[extra_rid] = '/foo'
+        self.catalog._length.change(1)
+
+        result = self.run_checkup()
+
+        self.assertFalse(result.is_healthy())
+        self.assertEqual(1, len(result.aberrations))
+        self.assertEqual(
+            {
+                'in_paths_keys_not_in_metadata_keys',
+                'in_paths_keys_not_in_uids_values',
+                'in_paths_values_not_in_uids_keys',
+            },
+            result.get_symptoms(extra_rid))
+
     def test_detects_missing_entry_in_rid_to_path_mapping_values(self):
         path = get_physical_path(self.folder)
         rid = self.catalog.uids.pop(path)
@@ -113,3 +130,34 @@ class TestCatalogCheckup(FunctionalTestCase):
                 'in_uids_values_not_in_paths_keys',
             },
             result.get_symptoms(rid))
+
+    def test_detects_extra_entry_in_path_to_rid_mapping(self):
+        extra_rid = self.choose_next_rid()
+        self.catalog.uids['/foo'] = extra_rid
+
+        result = self.run_checkup()
+
+        self.assertFalse(result.is_healthy())
+        self.assertEqual(1, len(result.aberrations))
+        self.assertEqual(
+            {
+                'in_uids_values_not_in_paths_keys',
+                'in_uids_keys_not_in_paths_values',
+                'in_uids_values_not_in_metadata_keys',
+            },
+            result.get_symptoms(extra_rid))
+
+    def test_detects_extra_entry_in_metadata(self):
+        extra_rid = self.choose_next_rid()
+        self.catalog.data[extra_rid] = dict()
+
+        result = self.run_checkup()
+
+        self.assertFalse(result.is_healthy())
+        self.assertEqual(1, len(result.aberrations))
+        self.assertEqual(
+            {
+                'in_metadata_keys_not_in_paths_keys',
+                'in_metadata_keys_not_in_uids_values',
+            },
+            result.get_symptoms(extra_rid))

@@ -65,6 +65,10 @@ class FunctionalTestCase(TestCase):
         rid = self.portal_catalog.getrid('/'.join(obj.getPhysicalPath()))
         return self.portal_catalog.getMetadataForRID(rid)
 
+    def reindex_object(self, obj):
+        obj.reindexObject()
+        self.maybe_process_indexing_queue()
+
     def maybe_process_indexing_queue(self):
         if not IS_PLONE_5:
             return
