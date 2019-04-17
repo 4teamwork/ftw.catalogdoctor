@@ -184,7 +184,10 @@ class TestCatalogCheckup(FunctionalTestCase):
             ' uids length: 1',
             ' paths length: 1',
             ' metadata length: 2',
-            'Index data is unhealthy:',
-            ' 98 --no path-- (in_metadata_keys_not_in_paths_keys in_metadata_keys_not_in_uids_values)'
+            'Index data is unhealthy, found 1 aberrations:',
+            'rid: 98 (--no path--)',
+            '\t- in_metadata_keys_not_in_paths_keys',
+            '\t- in_metadata_keys_not_in_uids_values',
+            '',
         ]
         self.assertEqual(expected, log.getvalue().splitlines())

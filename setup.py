@@ -61,5 +61,8 @@ setup(
     # -*- Entry points: -*-
     [z3c.autoinclude.plugin]
     target = plone
+
+    [zopectl.command]
+    catalogdoctor = ftw.catalogdoctor.command:doctor_cmd
     """,
 )

@@ -18,10 +18,12 @@ class RidAberration(object):
     def catalog_symptoms(self):
         return set(self._catalog_symptoms.keys())
 
-    def write_result(self, logger):
+    def write_result(self, formatter):
         path = self.path if self.path is not None else "--no path--"
-        logger.info(' {} {} ({})'.format(
-            self.rid, path, ' '.join(sorted(self.catalog_symptoms))))
+        formatter.info("rid: {} ('{}')".format(
+            self.rid, path))
+        for symptom in self.catalog_symptoms:
+            formatter.info('   - {}'.format(symptom))
 
 
 class CheckupResult(object):
@@ -71,26 +73,31 @@ class CheckupResult(object):
             == self.data_length
         )
 
-    def write_result(self, logger):
+    def write_result(self, formatter):
         """Log result to logger."""
 
-        logger.info("Catalog health checkup report:")
+        formatter.info("Catalog health checkup report:")
 
         if self.is_length_healthy():
-            logger.info("Catalog length is consistent at {}.".format(self.claimed_length))
+            formatter.info(
+                "Catalog length is consistent at {}.".format(
+                    self.claimed_length))
         else:
-            logger.info("Inconsistent catalog length:")
-            logger.info(" claimed length: {}".format(self.claimed_length))
-            logger.info(" uids length: {}".format(self.uids_length))
-            logger.info(" paths length: {}".format(self.paths_length))
-            logger.info(" metadata length: {}".format(self.data_length))
+            formatter.info("Inconsistent catalog length:")
+            formatter.info(" claimed length: {}".format(self.claimed_length))
+            formatter.info(" uids length: {}".format(self.uids_length))
+            formatter.info(" paths length: {}".format(self.paths_length))
+            formatter.info(" metadata length: {}".format(self.data_length))
 
         if self.is_index_data_healthy():
-            logger.info("Index data is healthy.")
+            formatter.info("Index data is healthy.")
         else:
-            logger.info("Index data is unhealthy:")
+            formatter.info(
+                "Index data is unhealthy, found {} aberrations:".format(
+                    len(self.aberrations)))
             for aberration in self.aberrations.values():
-                aberration.write_result(logger)
+                aberration.write_result(formatter)
+                formatter.info('')
 
 
 class CatalogCheckup(object):
