@@ -2,12 +2,18 @@ from plone import api
 
 
 class RidAberration(object):
-    """An aberration groups symptoms for a given rid."""
+    """An aberration represents issues with a certain rid.
 
-    def __init__(self, rid, path=None):
+    It provides methods to register certain symtomps that were found in the
+    catalog for its rid and thus is groups all symptoms for a given rid.
+    """
+    def __init__(self, rid):
         self.rid = rid
-        self.path = path
+        self.paths = set()
         self._catalog_symptoms = dict()
+
+    def attach_path(self, path):
+        self.paths.add(path)
 
     def report_catalog_symptom(self, name):
         """Report a symptom from the catalog for this abberation."""
@@ -19,11 +25,13 @@ class RidAberration(object):
         return set(self._catalog_symptoms.keys())
 
     def write_result(self, formatter):
-        path = self.path if self.path is not None else "--no path--"
-        formatter.info("rid: {} ('{}')".format(
-            self.rid, path))
+        if self.paths:
+            paths = ", ".join("'{}'".format(p) for p in self.paths)
+        else:
+            paths = "--no path--"
+        formatter.info("rid: {} ({})".format(self.rid, paths))
         for symptom in self.catalog_symptoms:
-            formatter.info('   - {}'.format(symptom))
+            formatter.info('\t- {}'.format(symptom))
 
 
 class CheckupResult(object):
@@ -46,8 +54,12 @@ class CheckupResult(object):
         """Report an aberration for a rid."""
 
         if rid not in self.aberrations:
-            self.aberrations[rid] = RidAberration(rid, path=path)
-        return self.aberrations[rid]
+            self.aberrations[rid] = RidAberration(rid)
+
+        aberration = self.aberrations[rid]
+        if path:
+            aberration.attach_path(path)
+        return aberration
 
     def report_symptom(self, name, rid, path=None):
         aberration = self.report_aberration(rid, path=path)
