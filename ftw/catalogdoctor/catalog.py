@@ -1,4 +1,5 @@
 from plone import api
+from ftw.catalogdoctor.exceptions import CantPerformSurgery
 
 
 class RidAberration(object):
@@ -22,7 +23,7 @@ class RidAberration(object):
 
     @property
     def catalog_symptoms(self):
-        return set(self._catalog_symptoms.keys())
+        return tuple(sorted(self._catalog_symptoms.keys()))
 
     def write_result(self, formatter):
         if self.paths:
@@ -37,12 +38,16 @@ class RidAberration(object):
 class CheckupResult(object):
     """Provide health result for one catalog checkup run."""
 
-    def __init__(self):
+    def __init__(self, catalog):
+        self.catalog = catalog
         self.aberrations = dict()
         self.claimed_length = None
         self.uids_length = None
         self.paths_length = None
         self.data_length = None
+
+    def get_aberrations(self):
+        return self.aberrations.values()
 
     def report_catalog_stats(self, claimed_length, uids_length, paths_length, data_length):
         self.claimed_length = claimed_length
@@ -112,6 +117,68 @@ class CheckupResult(object):
                 formatter.info('')
 
 
+class RemoveExtraRid(object):
+    """Remove an extra rid from the catalog."""
+
+    def __init__(self, catalog, aberration):
+        self.catalog = catalog
+        self.aberration = aberration
+
+    def perform(self):
+        rid = self.aberration.rid
+        if len(self.aberration.paths) != 1:
+            raise CantPerformSurgery(
+                "Expected exactly one affected path, got: {}"
+                .format(", ".join(self.aberration.paths)))
+
+        path = list(self.aberration.paths)[0]
+        if self.catalog.uids[path] == rid:
+            raise CantPerformSurgery(
+                "Expected different rid in catalog uids mapping for path {}"
+                .format(path))
+
+        for index in self.catalog.indexes.values():
+            index.unindex_object(rid)  # fail in case of no `unindex_object`
+        del self.catalog.paths[rid]
+        del self.catalog.data[rid]
+        self.catalog._length.change(-1)
+
+        return "Removed {} from catalog.".format(rid)
+
+
+class CatalogDoctor(object):
+    """Performs surgery for an aberration, if possible.
+
+    Surgeries are assigned based on symptoms. For each set of symptoms a
+    surgical procedure can be registered. This decides if an aberration can
+    be treated.
+    """
+    surgeries = {
+        ('in_metadata_keys_not_in_uids_values',
+         'in_paths_keys_not_in_uids_values',
+         'uids_tuple_mismatches_paths_tuple',
+         ): RemoveExtraRid
+    }
+
+    def __init__(self, catalog, aberration):
+        self.catalog = catalog
+        self.aberration = aberration
+
+    def can_perform_surgery(self):
+        return bool(self.get_surgery())
+
+    def get_surgery(self):
+        symptoms = self.aberration.catalog_symptoms
+        return self.surgeries.get(symptoms, None)
+
+    def perform_surgery(self):
+        surgery = self.get_surgery()
+        if not surgery:
+            return None
+
+        return surgery(self.catalog, self.aberration).perform()
+
+
 class CatalogCheckup(object):
     """Run health checkup for a Products.ZCatalog.Catalog instance.
 
@@ -129,7 +196,7 @@ class CatalogCheckup(object):
         self.catalog = self.portal_catalog._catalog
 
     def run(self):
-        result = CheckupResult()
+        result = CheckupResult(self.catalog)
 
         paths = self.catalog.paths
         paths_values = set(self.catalog.paths.values())

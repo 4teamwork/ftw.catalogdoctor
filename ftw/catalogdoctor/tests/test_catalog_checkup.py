@@ -60,11 +60,11 @@ class TestCatalogCheckup(FunctionalTestCase):
         self.assertFalse(result.is_healthy())
         self.assertEqual(1, len(result.aberrations))
         self.assertEqual(
-            {
-                'uids_tuple_mismatches_paths_tuple',
+            (
                 'in_paths_keys_not_in_metadata_keys',
                 'in_paths_keys_not_in_uids_values',
-            },
+                'uids_tuple_mismatches_paths_tuple',
+            ),
             result.get_symptoms(broken_rid))
 
     def test_detects_extra_entry_in_rid_to_path_mapping(self):
@@ -77,11 +77,11 @@ class TestCatalogCheckup(FunctionalTestCase):
         self.assertFalse(result.is_healthy())
         self.assertEqual(1, len(result.aberrations))
         self.assertEqual(
-            {
+            (
                 'in_paths_keys_not_in_metadata_keys',
                 'in_paths_keys_not_in_uids_values',
                 'in_paths_values_not_in_uids_keys',
-            },
+            ),
             result.get_symptoms(extra_rid))
 
     def test_detects_missing_entry_in_rid_to_path_mapping_values(self):
@@ -93,11 +93,11 @@ class TestCatalogCheckup(FunctionalTestCase):
         self.assertFalse(result.is_healthy())
         self.assertEqual(1, len(result.aberrations))
         self.assertEqual(
-            {
+            (
                 'in_metadata_keys_not_in_uids_values',
                 'in_paths_keys_not_in_uids_values',
                 'in_paths_values_not_in_uids_keys',
-            },
+            ),
             result.get_symptoms(rid))
 
     def test_detects_duplicate_entry_in_path_to_rid_mapping(self):
@@ -110,10 +110,10 @@ class TestCatalogCheckup(FunctionalTestCase):
         self.assertFalse(result.is_healthy())
         self.assertEqual(1, len(result.aberrations))
         self.assertEqual(
-            {
-                'paths_tuple_mismatches_uids_tuple',
+            (
                 'in_uids_keys_not_in_paths_values',
-            },
+                'paths_tuple_mismatches_uids_tuple',
+            ),
             result.get_symptoms(rid))
 
     def test_detects_missing_entry_in_path_to_rid_mapping(self):
@@ -126,11 +126,11 @@ class TestCatalogCheckup(FunctionalTestCase):
         self.assertFalse(result.is_healthy())
         self.assertEqual(1, len(result.aberrations))
         self.assertEqual(
-            {
+            (
                 'in_metadata_keys_not_in_paths_keys',
                 'in_uids_keys_not_in_paths_values',
                 'in_uids_values_not_in_paths_keys',
-            },
+            ),
             result.get_symptoms(rid))
 
     def test_detects_extra_entry_in_path_to_rid_mapping(self):
@@ -142,11 +142,11 @@ class TestCatalogCheckup(FunctionalTestCase):
         self.assertFalse(result.is_healthy())
         self.assertEqual(1, len(result.aberrations))
         self.assertEqual(
-            {
-                'in_uids_values_not_in_paths_keys',
+            (
                 'in_uids_keys_not_in_paths_values',
                 'in_uids_values_not_in_metadata_keys',
-            },
+                'in_uids_values_not_in_paths_keys',
+            ),
             result.get_symptoms(extra_rid))
 
     def test_detects_extra_entry_in_metadata(self):
@@ -158,10 +158,10 @@ class TestCatalogCheckup(FunctionalTestCase):
         self.assertFalse(result.is_healthy())
         self.assertEqual(1, len(result.aberrations))
         self.assertEqual(
-            {
+            (
                 'in_metadata_keys_not_in_paths_keys',
                 'in_metadata_keys_not_in_uids_values',
-            },
+            ),
             result.get_symptoms(extra_rid))
 
     def test_logging(self):

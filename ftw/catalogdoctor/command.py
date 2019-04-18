@@ -1,10 +1,13 @@
 from __future__ import print_function
 from ftw.catalogdoctor.catalog import CatalogCheckup
+from ftw.catalogdoctor.catalog import CatalogDoctor
+from Products.CMFCore.utils import getToolByName
 from Products.CMFPlone.interfaces import IPloneSiteRoot
 from Testing.makerequest import makerequest
 from zope.component.hooks import setSite
 import argparse
 import sys
+import transaction
 
 
 def discover_plone_site(app):
@@ -41,9 +44,30 @@ class ConsoleOutput(object):
         print(msg, file=sys.stderr)
 
 
-def checkup_command(site, args):
-    result = CatalogCheckup(catalog=site.portal_catalog).run()
+def checkup_command(portal_catalog):
+    result = CatalogCheckup(catalog=portal_catalog).run()
     result.write_result(formatter=ConsoleOutput())
+    return result
+
+
+def surgery_command(portal_catalog):
+    result = checkup_command(portal_catalog)
+
+    formatter = ConsoleOutput()
+    there_is_nothing_we_can_do = []
+
+    for aberration in result.get_aberrations():
+        doctor = CatalogDoctor(result.catalog, aberration)
+        if doctor.can_perform_surgery():
+            result = doctor.perform_surgery()
+            formatter.info(result)
+        else:
+            there_is_nothing_we_can_do.append(aberration)
+
+    if there_is_nothing_we_can_do:
+        formatter.info('The following aberrations could not be fixed')
+        for aberration in there_is_nothing_we_can_do:
+            aberration.write_result(formatter)
 
 
 def doctor_cmd(app, args):
@@ -57,13 +81,30 @@ def doctor_cmd(app, args):
         '-s', '--site', dest='site',
         default=discover_plone_site(app),
         help='Path to the Plone site from which portal_catalog is used.')
+    parser.add_argument(
+        '-n', '--dry-run', dest='dryrun',
+        default=False, action="store_true",
+        help='Dryrun, do not commit changes')
 
     commands = parser.add_subparsers()
-    command = commands.add_parser(
+    checkup = commands.add_parser(
         'checkup',
         help='Run a checkup for portal_catalog.')
-    command.set_defaults(func=checkup_command)
+    checkup.set_defaults(func=checkup_command)
+
+    surgery = commands.add_parser(
+        'surgery',
+        help='Run a checkup and perform surgery for aberrations in portal_catalog.')
+    surgery.set_defaults(func=surgery_command)
 
     args = parser.parse_args(args)
+
+    # if args.dryrun:
+    transaction.doom()
+
     site = load_site(app, args.site)
-    args.func(site, args)
+    portal_catalog = getToolByName(site, 'portal_catalog')
+    args.func(portal_catalog)
+
+    # if not args.dryrun:
+    #     transaction.commit()
