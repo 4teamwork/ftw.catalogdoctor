@@ -18,28 +18,27 @@ class RidAberration(object):
     def catalog_symptoms(self):
         return set(self._catalog_symptoms.keys())
 
+    def write_result(self, logger):
+        path = self.path if self.path is not None else "--no path--"
+        logger.info(' {} {} ({})'.format(
+            self.rid, path, ' '.join(sorted(self.catalog_symptoms))))
+
 
 class CheckupResult(object):
     """Provide health result for one catalog checkup run."""
 
     def __init__(self):
         self.aberrations = dict()
-        self._status = {
-            'uids': {
-                'length': None
-            },
-            'paths': {
-                'length': None
-            },
-            'data': {
-                'length': None
-            },
-        }
+        self.claimed_length = None
+        self.uids_length = None
+        self.paths_length = None
+        self.data_length = None
 
-    def report_catalog_stats(self, uids_length, paths_length, data_length):
-        self._status['uids']['length'] = uids_length
-        self._status['paths']['length'] = paths_length
-        self._status['data']['length'] = data_length
+    def report_catalog_stats(self, claimed_length, uids_length, paths_length, data_length):
+        self.claimed_length = claimed_length
+        self.uids_length = uids_length
+        self.paths_length = paths_length
+        self.data_length = data_length
 
     def report_aberration(self, rid, path=None):
         """Report an aberration for a rid."""
@@ -59,14 +58,39 @@ class CheckupResult(object):
     def is_healthy(self):
         """Return whether the catalog is healthy according to this result."""
 
-        return not self.aberrations and self.is_length_healthy()
+        return self.is_index_data_healthy() and self.is_length_healthy()
+
+    def is_index_data_healthy(self):
+        return not self.aberrations
 
     def is_length_healthy(self):
         return (
-            self._status['uids']['length']
-            == self._status['paths']['length']
-            == self._status['data']['length']
+            self.claimed_length
+            == self.uids_length
+            == self.paths_length
+            == self.data_length
         )
+
+    def write_result(self, logger):
+        """Log result to logger."""
+
+        logger.info("Catalog health checkup report:")
+
+        if self.is_length_healthy():
+            logger.info("Catalog length is consistent at {}.".format(self.claimed_length))
+        else:
+            logger.info("Inconsistent catalog length:")
+            logger.info(" claimed length: {}".format(self.claimed_length))
+            logger.info(" uids length: {}".format(self.uids_length))
+            logger.info(" paths length: {}".format(self.paths_length))
+            logger.info(" metadata length: {}".format(self.data_length))
+
+        if self.is_index_data_healthy():
+            logger.info("Index data is healthy.")
+        else:
+            logger.info("Index data is unhealthy:")
+            for aberration in self.aberrations.values():
+                aberration.write_result(logger)
 
 
 class CatalogCheckup(object):
@@ -94,7 +118,8 @@ class CatalogCheckup(object):
         uids_values = set(self.catalog.uids.values())
         data = self.catalog.data
 
-        result.report_catalog_stats(len(uids), len(paths), len(data))
+        result.report_catalog_stats(
+            len(self.catalog), len(uids), len(paths), len(data))
 
         for path, rid in uids.items():
             if rid not in paths:

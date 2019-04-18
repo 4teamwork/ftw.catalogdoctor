@@ -1,3 +1,4 @@
+from ftw.catalogdoctor.catalog import CatalogCheckup
 from ftw.catalogdoctor.testing import CATALOGDOCTOR_FUNCTIONAL
 from ftw.testing import IS_PLONE_5
 from plone import api
@@ -21,9 +22,13 @@ class FunctionalTestCase(TestCase):
         self.request = self.layer['request']
         self.portal_catalog = api.portal.get_tool('portal_catalog')
         self.catalog = self.portal_catalog._catalog
+        self.catalog._v_nextid = 97
 
         self._chosen_rids = set()
-        self._nextrid = getattr(self.catalog, '_v_nextid', 0)
+
+    def run_checkup(self):
+        checkup = CatalogCheckup(self.portal_catalog)
+        return checkup.run()
 
     def choose_next_rid(self):
         """Return a rid for testing currently unused.
@@ -38,13 +43,14 @@ class FunctionalTestCase(TestCase):
         superfluous entries to the catalog or its indices to setup your
         test-case.
         """
-        index = self._nextrid
-        if index % 4000 == 0:
-            index = randint(-2000000000, 2000000000)
-        while index in self.catalog.data or index in self._chosen_rids:
+        index = getattr(self.catalog, '_v_nextid', 0)
+        while (index in self.catalog.data
+               or index in self.catalog.paths
+               or index in self._chosen_rids):
             index = randint(-2000000000, 2000000000)
 
-        self._nextrid = index + 1
+        self.catalog._v_nextid = index
+        self._chosen_rids.add(index)
         return index
 
     def grant(self, *roles):

@@ -3,6 +3,8 @@ from ftw.builder import create
 from ftw.catalogdoctor.catalog import CatalogCheckup
 from ftw.catalogdoctor.tests import FunctionalTestCase
 from ftw.catalogdoctor.tests import get_physical_path
+from StringIO import StringIO
+import logging
 
 
 class TestCatalogCheckup(FunctionalTestCase):
@@ -161,3 +163,28 @@ class TestCatalogCheckup(FunctionalTestCase):
                 'in_metadata_keys_not_in_uids_values',
             },
             result.get_symptoms(extra_rid))
+
+    def test_logging(self):
+        extra_rid = self.choose_next_rid()
+        self.catalog.data[extra_rid] = dict()
+
+        result = self.run_checkup()
+
+        log = StringIO()
+        loghandler = logging.StreamHandler(log)
+        logger = logging.getLogger('ftw.catalogdoctor')
+        logger.setLevel(logging.DEBUG)
+        logger.addHandler(loghandler)
+
+        result.write_result(logger)
+        expected = [
+            'Catalog health checkup report:',
+            'Inconsistent catalog length:',
+            ' claimed length: 1',
+            ' uids length: 1',
+            ' paths length: 1',
+            ' metadata length: 2',
+            'Index data is unhealthy:',
+            ' 98 --no path-- (in_metadata_keys_not_in_paths_keys in_metadata_keys_not_in_uids_values)'
+        ]
+        self.assertEqual(expected, log.getvalue().splitlines())
