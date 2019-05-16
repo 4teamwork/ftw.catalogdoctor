@@ -1,53 +1,48 @@
 from ftw.builder import Builder
 from ftw.builder import create
-from ftw.catalogdoctor.catalog import CatalogCheckup
 from ftw.catalogdoctor.tests import FunctionalTestCase
 from ftw.catalogdoctor.tests import get_physical_path
 from StringIO import StringIO
 import logging
 
 
-class TestCatalogCheckup(FunctionalTestCase):
+class TestCatalogHealthCheck(FunctionalTestCase):
 
     def setUp(self):
-        super(TestCatalogCheckup, self).setUp()
+        super(TestCatalogHealthCheck, self).setUp()
 
         self.grant('Contributor')
         self.folder = create(Builder('folder').titled(u'Foo'))
 
-    def run_checkup(self):
-        checkup = CatalogCheckup(self.portal_catalog)
-        return checkup.run()
-
     def test_initial_catalog_is_healthy(self):
-        result = self.run_checkup()
+        result = self.run_healthcheck()
 
         self.assertTrue(result.is_healthy())
         self.assertTrue(result.is_length_healthy())
 
-    def test_aberrations_make_catalog_unhealthy(self):
-        result = self.run_checkup()
+    def test_unhealthy_rids_make_catalog_unhealthy(self):
+        result = self.run_healthcheck()
         self.assertTrue(result.is_healthy())
 
-        result.report_aberration(self.choose_next_rid())
+        result.report_symptom('foo', self.choose_next_rid())
         self.assertFalse(result.is_healthy())
 
     def test_longer_uids_make_catalog_unhealthy(self):
         self.catalog.uids['foo'] = self.choose_next_rid()
 
-        result = self.run_checkup()
+        result = self.run_healthcheck()
         self.assertFalse(result.is_length_healthy())
 
     def test_longer_paths_make_catalog_unhealthy(self):
         self.catalog.paths[self.choose_next_rid()] = 'foo'
 
-        result = self.run_checkup()
+        result = self.run_healthcheck()
         self.assertFalse(result.is_length_healthy())
 
     def test_longer_metadata_make_catalog_unhealthy(self):
         self.catalog.data[self.choose_next_rid()] = dict()
 
-        result = self.run_checkup()
+        result = self.run_healthcheck()
         self.assertFalse(result.is_length_healthy())
 
     def test_detects_duplicate_entry_in_rid_to_path_mapping_keys(self):
@@ -55,10 +50,10 @@ class TestCatalogCheckup(FunctionalTestCase):
         self.catalog.paths[broken_rid] = get_physical_path(self.folder)
         self.catalog._length.change(1)
 
-        result = self.run_checkup()
+        result = self.run_healthcheck()
 
         self.assertFalse(result.is_healthy())
-        self.assertEqual(1, len(result.aberrations))
+        self.assertEqual(1, len(result.unhealthy_rids))
         self.assertEqual(
             (
                 'in_paths_keys_not_in_metadata_keys',
@@ -72,10 +67,10 @@ class TestCatalogCheckup(FunctionalTestCase):
         self.catalog.paths[extra_rid] = '/foo'
         self.catalog._length.change(1)
 
-        result = self.run_checkup()
+        result = self.run_healthcheck()
 
         self.assertFalse(result.is_healthy())
-        self.assertEqual(1, len(result.aberrations))
+        self.assertEqual(1, len(result.unhealthy_rids))
         self.assertEqual(
             (
                 'in_paths_keys_not_in_metadata_keys',
@@ -88,10 +83,10 @@ class TestCatalogCheckup(FunctionalTestCase):
         path = get_physical_path(self.folder)
         rid = self.catalog.uids.pop(path)
 
-        result = self.run_checkup()
+        result = self.run_healthcheck()
 
         self.assertFalse(result.is_healthy())
-        self.assertEqual(1, len(result.aberrations))
+        self.assertEqual(1, len(result.unhealthy_rids))
         self.assertEqual(
             (
                 'in_metadata_keys_not_in_uids_values',
@@ -105,10 +100,10 @@ class TestCatalogCheckup(FunctionalTestCase):
         rid = self.catalog.uids[path]
         self.catalog.uids['/some/other/path'] = rid
 
-        result = self.run_checkup()
+        result = self.run_healthcheck()
 
         self.assertFalse(result.is_healthy())
-        self.assertEqual(1, len(result.aberrations))
+        self.assertEqual(1, len(result.unhealthy_rids))
         self.assertEqual(
             (
                 'in_uids_keys_not_in_paths_values',
@@ -121,10 +116,10 @@ class TestCatalogCheckup(FunctionalTestCase):
         rid = self.catalog.uids[path]
         del self.catalog.paths[rid]
 
-        result = self.run_checkup()
+        result = self.run_healthcheck()
 
         self.assertFalse(result.is_healthy())
-        self.assertEqual(1, len(result.aberrations))
+        self.assertEqual(1, len(result.unhealthy_rids))
         self.assertEqual(
             (
                 'in_metadata_keys_not_in_paths_keys',
@@ -137,10 +132,10 @@ class TestCatalogCheckup(FunctionalTestCase):
         extra_rid = self.choose_next_rid()
         self.catalog.uids['/foo'] = extra_rid
 
-        result = self.run_checkup()
+        result = self.run_healthcheck()
 
         self.assertFalse(result.is_healthy())
-        self.assertEqual(1, len(result.aberrations))
+        self.assertEqual(1, len(result.unhealthy_rids))
         self.assertEqual(
             (
                 'in_uids_keys_not_in_paths_values',
@@ -153,10 +148,10 @@ class TestCatalogCheckup(FunctionalTestCase):
         extra_rid = self.choose_next_rid()
         self.catalog.data[extra_rid] = dict()
 
-        result = self.run_checkup()
+        result = self.run_healthcheck()
 
         self.assertFalse(result.is_healthy())
-        self.assertEqual(1, len(result.aberrations))
+        self.assertEqual(1, len(result.unhealthy_rids))
         self.assertEqual(
             (
                 'in_metadata_keys_not_in_paths_keys',
@@ -168,7 +163,7 @@ class TestCatalogCheckup(FunctionalTestCase):
         extra_rid = self.choose_next_rid()
         self.catalog.data[extra_rid] = dict()
 
-        result = self.run_checkup()
+        result = self.run_healthcheck()
 
         log = StringIO()
         loghandler = logging.StreamHandler(log)
@@ -178,13 +173,13 @@ class TestCatalogCheckup(FunctionalTestCase):
 
         result.write_result(logger)
         expected = [
-            'Catalog health checkup report:',
+            'Catalog health check report:',
             'Inconsistent catalog length:',
             ' claimed length: 1',
             ' uids length: 1',
             ' paths length: 1',
             ' metadata length: 2',
-            'Index data is unhealthy, found 1 aberrations:',
+            'Index data is unhealthy, found 1 unhealthy rids:',
             'rid: 98 (--no path--)',
             '\t- in_metadata_keys_not_in_paths_keys',
             '\t- in_metadata_keys_not_in_uids_values',

@@ -63,6 +63,6 @@ setup(
     target = plone
 
     [zopectl.command]
-    catalogdoctor = ftw.catalogdoctor.command:doctor_cmd
+    doctor = ftw.catalogdoctor.command:doctor_cmd
     """,
 )

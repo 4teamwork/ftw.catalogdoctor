@@ -1,4 +1,4 @@
-from ftw.catalogdoctor.catalog import CatalogCheckup
+from ftw.catalogdoctor.healthcheck import CatalogHealthCheck
 from ftw.catalogdoctor.testing import CATALOGDOCTOR_FUNCTIONAL
 from ftw.testing import IS_PLONE_5
 from plone import api
@@ -26,9 +26,9 @@ class FunctionalTestCase(TestCase):
 
         self._chosen_rids = set()
 
-    def run_checkup(self):
-        checkup = CatalogCheckup(self.portal_catalog)
-        return checkup.run()
+    def run_healthcheck(self):
+        healthcheck = CatalogHealthCheck(self.portal_catalog)
+        return healthcheck.run()
 
     def choose_next_rid(self):
         """Return a rid for testing currently unused.
