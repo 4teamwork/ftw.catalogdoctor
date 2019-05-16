@@ -59,7 +59,8 @@ def surgery_command(portal_catalog):
     for unhealthy_rid in result.get_unhealthy_rids():
         doctor = CatalogDoctor(result.catalog, unhealthy_rid)
         if doctor.can_perform_surgery():
-            formatter.info(doctor.perform_surgery())
+            surgery = doctor.perform_surgery()
+            surgery.write_result(formatter)
         else:
             there_is_nothing_we_can_do.append(unhealthy_rid)
 

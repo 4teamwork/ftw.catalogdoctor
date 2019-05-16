@@ -8,6 +8,7 @@ class Surgery(object):
     def __init__(self, catalog, unhealthy_rid):
         self.catalog = catalog
         self.unhealthy_rid = unhealthy_rid
+        self.surgery_log = []
 
     def perform(self):
         raise NotImplementedError
@@ -16,14 +17,30 @@ class Surgery(object):
         for index in self.catalog.indexes.values():
             index.unindex_object(rid)  # fail in case of no `unindex_object`
 
+        self.surgery_log.append(
+            "Removed rid from all catalog indexes.")
+
     def delete_rid_from_paths(self, rid):
         del self.catalog.paths[rid]
+
+        self.surgery_log.append(
+            "Removed rid from paths (the rid->path mapping).")
 
     def delete_rid_from_metadata(self, rid):
         del self.catalog.data[rid]
 
+        self.surgery_log.append(
+            "Removed rid from catalog metadata.")
+
     def change_catalog_length(self, delta):
         self.catalog._length.change(delta)
+
+    def write_result(self, formatter):
+        """Write surgery result to formatter."""
+
+        formatter.info("{}:".format(self.unhealthy_rid))
+        for entry in self.surgery_log:
+            formatter.info('\t- {}'.format(entry))
 
 
 class RemoveExtraRid(Surgery):
@@ -52,8 +69,6 @@ class RemoveExtraRid(Surgery):
         self.delete_rid_from_paths(rid)
         self.delete_rid_from_metadata(rid)
         self.change_catalog_length(-1)
-
-        return "Removed {} from catalog.".format(rid)
 
 
 class RemoveOrphanedRid(Surgery):
@@ -89,8 +104,6 @@ class RemoveOrphanedRid(Surgery):
         self.delete_rid_from_metadata(rid)
         self.change_catalog_length(-1)
 
-        return "Removed {} from catalog.".format(rid)
-
 
 class CatalogDoctor(object):
     """Performs surgery for an unhealthy_rid, if possible.
@@ -122,8 +135,10 @@ class CatalogDoctor(object):
         return self.surgeries.get(symptoms, None)
 
     def perform_surgery(self):
-        surgery = self.get_surgery()
-        if not surgery:
+        surgery_cls = self.get_surgery()
+        if not surgery_cls:
             return None
 
-        return surgery(self.catalog, self.unhealthy_rid).perform()
+        surgery = surgery_cls(self.catalog, self.unhealthy_rid)
+        surgery.perform()
+        return surgery

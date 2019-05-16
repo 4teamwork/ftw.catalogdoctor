@@ -100,12 +100,15 @@ class UnhealthyRid(object):
     def paths(self):
         return tuple(sorted(self._paths))
 
-    def write_result(self, formatter):
+    def __str__(self):
         if self.paths:
             paths = ", ".join("'{}'".format(p) for p in self.paths)
         else:
             paths = "--no path--"
-        formatter.info("rid: {} ({})".format(self.rid, paths))
+        return "rid {} ({})".format(self.rid, paths)
+
+    def write_result(self, formatter):
+        formatter.info("{}:".format(self))
         for symptom in self.catalog_symptoms:
             formatter.info('\t- {}'.format(symptom))
 

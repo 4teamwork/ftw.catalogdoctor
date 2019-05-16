@@ -180,7 +180,7 @@ class TestCatalogHealthCheck(FunctionalTestCase):
             ' paths length: 1',
             ' metadata length: 2',
             'Index data is unhealthy, found 1 unhealthy rids:',
-            'rid: 98 (--no path--)',
+            'rid 98 (--no path--):',
             '\t- in_metadata_keys_not_in_paths_keys',
             '\t- in_metadata_keys_not_in_uids_values',
             '',
