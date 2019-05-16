@@ -81,11 +81,11 @@ class UnhealthyRid(object):
     """
     def __init__(self, rid):
         self.rid = rid
-        self.paths = set()
+        self._paths = set()
         self._catalog_symptoms = set()
 
     def attach_path(self, path):
-        self.paths.add(path)
+        self._paths.add(path)
 
     def report_catalog_symptom(self, name):
         """Report a symptom found in the the catalog."""
@@ -95,6 +95,10 @@ class UnhealthyRid(object):
     @property
     def catalog_symptoms(self):
         return tuple(sorted(self._catalog_symptoms))
+
+    @property
+    def paths(self):
+        return tuple(sorted(self._paths))
 
     def write_result(self, formatter):
         if self.paths:

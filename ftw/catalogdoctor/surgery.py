@@ -42,7 +42,7 @@ class RemoveExtraRid(Surgery):
                 "Expected exactly one affected path, got: {}"
                 .format(", ".join(self.unhealthy_rid.paths)))
 
-        path = list(self.unhealthy_rid.paths)[0]
+        path = self.unhealthy_rid.paths[0]
         if self.catalog.uids[path] == rid:
             raise CantPerformSurgery(
                 "Expected different rid in catalog uids mapping for path {}"
