@@ -2,12 +2,8 @@ from ftw.builder import Builder
 from ftw.builder import create
 from ftw.catalogdoctor.tests import FunctionalTestCase
 from ftw.catalogdoctor.tests import get_physical_path
-from StringIO import StringIO
-import logging
-
-
-class Mock(object):
-    pass
+from ftw.catalogdoctor.tests import Mock
+from ftw.catalogdoctor.tests import MockFormatter
 
 
 class TestCatalogHealthCheck(FunctionalTestCase):
@@ -188,14 +184,8 @@ class TestCatalogHealthCheck(FunctionalTestCase):
         self.catalog.data[extra_rid] = dict()
 
         result = self.run_healthcheck()
-
-        log = StringIO()
-        loghandler = logging.StreamHandler(log)
-        logger = logging.getLogger('ftw.catalogdoctor')
-        logger.setLevel(logging.DEBUG)
-        logger.addHandler(loghandler)
-
-        result.write_result(logger)
+        formatter = MockFormatter()
+        result.write_result(formatter)
         expected = [
             'Catalog health check report:',
             'Inconsistent catalog length:',
@@ -212,4 +202,4 @@ class TestCatalogHealthCheck(FunctionalTestCase):
             '\t- in_metadata_keys_not_in_uids_values',
             '',
         ]
-        self.assertEqual(expected, log.getvalue().splitlines())
+        self.assertEqual(expected, formatter.getlines())

@@ -44,21 +44,22 @@ class ConsoleOutput(object):
         print(msg, file=sys.stderr)
 
 
-def healthcheck_command(portal_catalog, args):
-    transaction.doom()  # extra paranoia, prevent erroneous commit
+def healthcheck_command(portal_catalog, args, formatter):
+    if args.dryrun:
+        transaction.doom()  # extra paranoia, prevent erroneous commit
 
     result = CatalogHealthCheck(catalog=portal_catalog).run()
-    result.write_result(formatter=ConsoleOutput())
+    result.write_result(formatter)
     return result
 
 
-def surgery_command(portal_catalog, args):
+def surgery_command(portal_catalog, args, formatter):
     if args.dryrun:
+        formatter.info('Performing dryrun!')
+        formatter.info('')
         transaction.doom()
 
-    formatter = ConsoleOutput()
-
-    result = healthcheck_command(portal_catalog)
+    result = healthcheck_command(portal_catalog, args, formatter)
     if result.is_healthy():
         transaction.doom()  # extra paranoia, prevent erroneous commit
         formatter.info('Catalog is healthy, no surgery is needed.')
@@ -81,21 +82,23 @@ def surgery_command(portal_catalog, args):
             unhealthy_rid.write_result(formatter)
             formatter.info('')
 
-    formatter.info('')
     formatter.info('Performing post-surgery healthcheck:')
-    post_result = healthcheck_command(portal_catalog)
+    post_result = healthcheck_command(portal_catalog, args, formatter)
     if not post_result.is_healthy():
         transaction.doom()   # extra paranoia, prevent erroneous commit
         formatter.info('Not all health problems could be fixed, aborting.')
         return
 
-    if not args.dryrun:
+    if args.dryrun:
+        formatter.info('Surgery would have been successful, but was aborted '
+                       'due to dryrun!')
+    else:
         transaction.commit()
+        formatter.info('Surgery was successful, known health problems could '
+                       'be fixed!')
 
-    formatter.info('Surgery successful, known health problems could be fixed!')
 
-
-def doctor_cmd(app, args):
+def _setup_parser(app):
     parser = argparse.ArgumentParser(
         description='Provide health check and fixes for portal_catalog.',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -111,7 +114,7 @@ def doctor_cmd(app, args):
         default=False, action="store_true",
         help='Dryrun, do not commit changes')
 
-    commands = parser.add_subparsers()
+    commands = parser.add_subparsers(dest='command')
     healthcheck = commands.add_parser(
         'healthcheck',
         help='Run a health check for portal_catalog.')
@@ -122,8 +125,25 @@ def doctor_cmd(app, args):
         help='Run a healthcheck and perform surgery for unhealthy rids in '
              'portal_catalog.')
     surgery.set_defaults(func=surgery_command)
+    return parser
 
-    args = parser.parse_args(args)
-    site = load_site(app, args.site)
+
+def _parse(parser, args):
+    parsed_args = parser.parse_args(args)
+    # healthceck never commits and thus we always enable the dryrun flag.
+    if parsed_args.command == 'healthcheck':
+        parsed_args.dryrun = True
+    return parsed_args
+
+
+def _run(parsed_args, app, formatter):
+    site = load_site(app, parsed_args.site)
     portal_catalog = getToolByName(site, 'portal_catalog')
-    args.func(portal_catalog, args)
+
+    return parsed_args.func(portal_catalog, parsed_args, formatter=formatter)
+
+
+def doctor_cmd(app, args, formatter=None):
+    parser = _setup_parser(app)
+    parsed_args = _parse(parser, args)
+    _run(parsed_args, app, formatter or ConsoleOutput())

@@ -1,3 +1,4 @@
+from ftw.catalogdoctor.command import doctor_cmd
 from ftw.catalogdoctor.healthcheck import CatalogHealthCheck
 from ftw.catalogdoctor.testing import CATALOGDOCTOR_FUNCTIONAL
 from ftw.testing import IS_PLONE_5
@@ -5,6 +6,7 @@ from plone import api
 from plone.app.testing import setRoles
 from plone.app.testing import TEST_USER_ID
 from random import randint
+from StringIO import StringIO
 from unittest2 import TestCase
 import transaction
 
@@ -13,11 +15,34 @@ def get_physical_path(obj):
     return '/'.join(obj.getPhysicalPath())
 
 
+class MockFormatter(object):
+
+    def __init__(self):
+        self.log = StringIO()
+
+    def info(self, msg):
+        self.log.write(msg + '\n')
+
+    def warning(self, msg):
+        self.log.write(msg + '\n')
+
+    def error(self, msg):
+        self.log.write(msg + '\n')
+
+    def getlines(self):
+        return self.log.getvalue().splitlines()
+
+
+class Mock(object):
+    pass
+
+
 class FunctionalTestCase(TestCase):
 
     layer = CATALOGDOCTOR_FUNCTIONAL
 
     def setUp(self):
+        self.app = self.layer['app']
         self.portal = self.layer['portal']
         self.request = self.layer['request']
         self.portal_catalog = api.portal.get_tool('portal_catalog')
@@ -25,6 +50,12 @@ class FunctionalTestCase(TestCase):
         self.catalog._v_nextid = 97
 
         self._chosen_rids = set()
+
+    def run_command(self, *args):
+        formatter = MockFormatter()
+        command = ['-c'] + list(args)
+        doctor_cmd(self.app, command, formatter=formatter)
+        return formatter.getlines()
 
     def run_healthcheck(self):
         self.maybe_process_indexing_queue()  # enforce up to date catalog
