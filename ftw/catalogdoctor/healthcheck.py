@@ -25,8 +25,10 @@ class CatalogHealthCheck(object):
         uids_values = set(self.catalog.uids.values())
         data = self.catalog.data
 
+        uid_index = self.catalog.indexes['UID']
         result.report_catalog_stats(
-            len(self.catalog), len(uids), len(paths), len(data))
+            len(self.catalog), len(uids), len(paths), len(data),
+            len(uid_index), len(uid_index._index), len(uid_index._unindex))
 
         for path, rid in uids.items():
             if rid not in paths:
@@ -123,15 +125,25 @@ class HealthCheckResult(object):
         self.uids_length = None
         self.paths_length = None
         self.data_length = None
+        self.uid_index_claimed_length = None
+        self.uid_index_index_length = None
+        self.uid_index_unindex_length = None
 
     def get_unhealthy_rids(self):
         return self.unhealthy_rids.values()
 
-    def report_catalog_stats(self, claimed_length, uids_length, paths_length, data_length):
+    def report_catalog_stats(self, claimed_length, uids_length, paths_length,
+                             data_length,
+                             uid_index_claimed_length,
+                             uid_index_index_length,
+                             uid_index_unindex_length):
         self.claimed_length = claimed_length
         self.uids_length = uids_length
         self.paths_length = paths_length
         self.data_length = data_length
+        self.uid_index_claimed_length = uid_index_claimed_length
+        self.uid_index_index_length = uid_index_index_length
+        self.uid_index_unindex_length = uid_index_unindex_length
 
     def _make_unhealthy_rid(self, rid, path=None):
         if rid not in self.unhealthy_rids:
@@ -164,6 +176,9 @@ class HealthCheckResult(object):
             == self.uids_length
             == self.paths_length
             == self.data_length
+            == self.uid_index_claimed_length
+            == self.uid_index_index_length
+            == self.uid_index_unindex_length
         )
 
     def write_result(self, formatter):
@@ -181,6 +196,12 @@ class HealthCheckResult(object):
             formatter.info(" uids length: {}".format(self.uids_length))
             formatter.info(" paths length: {}".format(self.paths_length))
             formatter.info(" metadata length: {}".format(self.data_length))
+            formatter.info(" uid index claimed length: {}".format(
+                self.uid_index_claimed_length))
+            formatter.info(" uid index index length: {}".format(
+                self.uid_index_index_length))
+            formatter.info(" uid index unindex length: {}".format(
+                self.uid_index_unindex_length))
 
         if self.is_index_data_healthy():
             formatter.info("Index data is healthy.")

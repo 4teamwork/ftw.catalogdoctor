@@ -6,6 +6,10 @@ from StringIO import StringIO
 import logging
 
 
+class Mock(object):
+    pass
+
+
 class TestCatalogHealthCheck(FunctionalTestCase):
 
     def setUp(self):
@@ -41,6 +45,26 @@ class TestCatalogHealthCheck(FunctionalTestCase):
 
     def test_longer_metadata_make_catalog_unhealthy(self):
         self.catalog.data[self.choose_next_rid()] = dict()
+
+        result = self.run_healthcheck()
+        self.assertFalse(result.is_length_healthy())
+
+    def test_extra_uid_index_make_catalog_unhealthy(self):
+        uid_index = self.catalog.indexes['UID']
+        unhealthy_rid = self.choose_next_rid()
+
+        mock = Mock()
+        mock.UID = 'foo'
+        uid_index.index_object(unhealthy_rid, mock)
+
+        result = self.run_healthcheck()
+        self.assertFalse(result.is_length_healthy())
+
+    def test_missing_uid_index_make_catalog_unhealthy(self):
+        rid = self.catalog.uids[get_physical_path(self.folder)]
+
+        uid_index = self.catalog.indexes['UID']
+        uid_index.unindex_object(rid)
 
         result = self.run_healthcheck()
         self.assertFalse(result.is_length_healthy())
@@ -179,6 +203,9 @@ class TestCatalogHealthCheck(FunctionalTestCase):
             ' uids length: 1',
             ' paths length: 1',
             ' metadata length: 2',
+            ' uid index claimed length: 1',
+            ' uid index index length: 1',
+            ' uid index unindex length: 1',
             'Index data is unhealthy, found 1 unhealthy rids:',
             'rid 98 (--no path--):',
             '\t- in_metadata_keys_not_in_paths_keys',
