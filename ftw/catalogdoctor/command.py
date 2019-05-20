@@ -44,30 +44,55 @@ class ConsoleOutput(object):
         print(msg, file=sys.stderr)
 
 
-def healthcheck_command(portal_catalog):
+def healthcheck_command(portal_catalog, args):
+    transaction.doom()  # extra paranoia, prevent erroneous commit
+
     result = CatalogHealthCheck(catalog=portal_catalog).run()
     result.write_result(formatter=ConsoleOutput())
     return result
 
 
-def surgery_command(portal_catalog):
-    result = healthcheck_command(portal_catalog)
+def surgery_command(portal_catalog, args):
+    if args.dryrun:
+        transaction.doom()
 
     formatter = ConsoleOutput()
-    there_is_nothing_we_can_do = []
 
+    result = healthcheck_command(portal_catalog)
+    if result.is_healthy():
+        transaction.doom()  # extra paranoia, prevent erroneous commit
+        formatter.info('Catalog is healthy, no surgery is needed.')
+        return
+
+    there_is_nothing_we_can_do = []
+    formatter.info('Performing surgery:')
     for unhealthy_rid in result.get_unhealthy_rids():
         doctor = CatalogDoctor(result.catalog, unhealthy_rid)
         if doctor.can_perform_surgery():
             surgery = doctor.perform_surgery()
             surgery.write_result(formatter)
+            formatter.info('')
         else:
             there_is_nothing_we_can_do.append(unhealthy_rid)
 
     if there_is_nothing_we_can_do:
-        formatter.info('The following unhealthy rids could not be fixed')
+        formatter.info('The following unhealthy rids could not be fixed:')
         for unhealthy_rid in there_is_nothing_we_can_do:
             unhealthy_rid.write_result(formatter)
+            formatter.info('')
+
+    formatter.info('')
+    formatter.info('Performing post-surgery healthcheck:')
+    post_result = healthcheck_command(portal_catalog)
+    if not post_result.is_healthy():
+        transaction.doom()   # extra paranoia, prevent erroneous commit
+        formatter.info('Not all health problems could be fixed, aborting.')
+        return
+
+    if not args.dryrun:
+        transaction.commit()
+
+    formatter.info('Surgery successful, known health problems could be fixed!')
 
 
 def doctor_cmd(app, args):
@@ -99,13 +124,6 @@ def doctor_cmd(app, args):
     surgery.set_defaults(func=surgery_command)
 
     args = parser.parse_args(args)
-
-    # if args.dryrun:
-    transaction.doom()
-
     site = load_site(app, args.site)
     portal_catalog = getToolByName(site, 'portal_catalog')
-    args.func(portal_catalog)
-
-    # if not args.dryrun:
-    #     transaction.commit()
+    args.func(portal_catalog, args)
