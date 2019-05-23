@@ -20,7 +20,7 @@ class TestDoctorCommand(FunctionalTestCase):
         expected = [
             'Catalog health check report:',
             'Catalog length is consistent at 1.',
-            'Index data is healthy.']
+            'Catalog data is healthy.']
         self.assertEqual(expected, self.run_command('doctor', 'healthcheck'))
 
     def test_healthcheck_unhealthy_catalog(self):
@@ -37,7 +37,7 @@ class TestDoctorCommand(FunctionalTestCase):
             ' uid index claimed length: 1',
             ' uid index index length: 1',
             ' uid index unindex length: 1',
-            'Index data is unhealthy, found 1 unhealthy rids:',
+            'Catalog data is unhealthy, found 1 unhealthy rids:',
             'rid 98 (--no path--):',
             '\t- in_metadata_keys_not_in_paths_keys',
             '\t- in_metadata_keys_not_in_uids_values',
@@ -49,7 +49,7 @@ class TestDoctorCommand(FunctionalTestCase):
         expected = [
             'Catalog health check report:',
             'Catalog length is consistent at 1.',
-            'Index data is healthy.',
+            'Catalog data is healthy.',
             'Catalog is healthy, no surgery is needed.',
         ]
         self.assertEqual(expected, self.run_command('doctor', 'surgery'))
@@ -68,7 +68,7 @@ class TestDoctorCommand(FunctionalTestCase):
             ' uid index claimed length: 1',
             ' uid index index length: 1',
             ' uid index unindex length: 1',
-            'Index data is unhealthy, found 1 unhealthy rids:',
+            'Catalog data is unhealthy, found 1 unhealthy rids:',
             'rid {} (--no path--):'.format(extra_rid),
             '\t- in_metadata_keys_not_in_paths_keys',
             '\t- in_metadata_keys_not_in_uids_values',
@@ -89,7 +89,7 @@ class TestDoctorCommand(FunctionalTestCase):
             ' uid index claimed length: 1',
             ' uid index index length: 1',
             ' uid index unindex length: 1',
-            'Index data is unhealthy, found 1 unhealthy rids:',
+            'Catalog data is unhealthy, found 1 unhealthy rids:',
             'rid {} (--no path--):'.format(extra_rid),
             '\t- in_metadata_keys_not_in_paths_keys',
             '\t- in_metadata_keys_not_in_uids_values',
@@ -113,7 +113,7 @@ class TestDoctorCommand(FunctionalTestCase):
             ' uid index claimed length: 1',
             ' uid index index length: 1',
             ' uid index unindex length: 1',
-            'Index data is unhealthy, found 1 unhealthy rids:',
+            'Catalog data is unhealthy, found 1 unhealthy rids:',
             'rid {} (\'/plone/foo\'):'.format(rid),
             '\t- in_metadata_keys_not_in_uids_values',
             '\t- in_paths_keys_not_in_uids_values',
@@ -128,7 +128,7 @@ class TestDoctorCommand(FunctionalTestCase):
             'Performing post-surgery healthcheck:',
             'Catalog health check report:',
             'Catalog length is consistent at 0.',
-            'Index data is healthy.',
+            'Catalog data is healthy.',
             'Surgery was successful, known health problems could be fixed!',
         ]
         self.assertEqual(expected, self.run_command('doctor', 'surgery'))
@@ -150,7 +150,7 @@ class TestDoctorCommand(FunctionalTestCase):
             ' uid index claimed length: 1',
             ' uid index index length: 1',
             ' uid index unindex length: 1',
-            'Index data is unhealthy, found 1 unhealthy rids:',
+            'Catalog data is unhealthy, found 1 unhealthy rids:',
             'rid {} (\'/plone/foo\'):'.format(rid),
             '\t- in_metadata_keys_not_in_uids_values',
             '\t- in_paths_keys_not_in_uids_values',
@@ -165,7 +165,7 @@ class TestDoctorCommand(FunctionalTestCase):
             'Performing post-surgery healthcheck:',
             'Catalog health check report:',
             'Catalog length is consistent at 0.',
-            'Index data is healthy.',
+            'Catalog data is healthy.',
             'Surgery would have been successful, but was aborted due to '
             'dryrun!',
         ]

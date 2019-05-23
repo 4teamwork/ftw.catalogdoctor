@@ -196,7 +196,7 @@ class TestCatalogHealthCheck(FunctionalTestCase):
             ' uid index claimed length: 1',
             ' uid index index length: 1',
             ' uid index unindex length: 1',
-            'Index data is unhealthy, found 1 unhealthy rids:',
+            'Catalog data is unhealthy, found 1 unhealthy rids:',
             'rid 98 (--no path--):',
             '\t- in_metadata_keys_not_in_paths_keys',
             '\t- in_metadata_keys_not_in_uids_values',

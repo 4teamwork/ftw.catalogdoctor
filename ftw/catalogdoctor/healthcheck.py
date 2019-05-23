@@ -165,9 +165,9 @@ class HealthCheckResult(object):
     def is_healthy(self):
         """Return whether the catalog is healthy according to this result."""
 
-        return self.is_index_data_healthy() and self.is_length_healthy()
+        return self.is_catalog_data_healthy() and self.is_length_healthy()
 
-    def is_index_data_healthy(self):
+    def is_catalog_data_healthy(self):
         return not self.unhealthy_rids
 
     def is_length_healthy(self):
@@ -203,11 +203,11 @@ class HealthCheckResult(object):
             formatter.info(" uid index unindex length: {}".format(
                 self.uid_index_unindex_length))
 
-        if self.is_index_data_healthy():
-            formatter.info("Index data is healthy.")
+        if self.is_catalog_data_healthy():
+            formatter.info("Catalog data is healthy.")
         else:
             formatter.info(
-                "Index data is unhealthy, found {} unhealthy rids:".format(
+                "Catalog data is unhealthy, found {} unhealthy rids:".format(
                     len(self.unhealthy_rids)))
             for unhealthy_rid in self.unhealthy_rids.values():
                 unhealthy_rid.write_result(formatter)
