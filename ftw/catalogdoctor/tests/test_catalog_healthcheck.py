@@ -157,6 +157,8 @@ class TestCatalogHealthCheck(FunctionalTestCase):
         self.assertEqual(1, len(result.unhealthy_rids))
         self.assertEqual(
             (
+                'in_catalog_not_in_uuid_index',
+                'in_catalog_not_in_uuid_unindex',
                 'in_uids_keys_not_in_paths_values',
                 'in_uids_values_not_in_metadata_keys',
                 'in_uids_values_not_in_paths_keys',
