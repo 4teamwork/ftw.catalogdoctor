@@ -11,10 +11,6 @@ from unittest2 import TestCase
 import transaction
 
 
-def get_physical_path(obj):
-    return '/'.join(obj.getPhysicalPath())
-
-
 class MockFormatter(object):
 
     def __init__(self):
@@ -113,3 +109,10 @@ class FunctionalTestCase(TestCase):
 
         from Products.CMFCore.indexing import processQueue
         processQueue()
+
+    def get_rid(self, obj):
+        path = self.get_physical_path(obj)
+        return self.catalog.uids[path]
+
+    def get_physical_path(self, obj):
+        return '/'.join(obj.getPhysicalPath())

@@ -3,7 +3,6 @@ from ftw.builder import create
 from ftw.catalogdoctor.command import _parse
 from ftw.catalogdoctor.command import _setup_parser
 from ftw.catalogdoctor.tests import FunctionalTestCase
-from ftw.catalogdoctor.tests import get_physical_path
 
 
 class TestDoctorCommand(FunctionalTestCase):
@@ -99,7 +98,7 @@ class TestDoctorCommand(FunctionalTestCase):
         self.assertEqual(expected, self.run_command('doctor', 'surgery'))
 
     def test_successful_surgery_unhealthy_catalog(self):
-        path = get_physical_path(self.folder)
+        path = self.get_physical_path(self.folder)
         rid = self.catalog.uids.pop(path)
         self.portal._delObject(self.folder.getId(), suppress_events=True)
 
@@ -134,7 +133,7 @@ class TestDoctorCommand(FunctionalTestCase):
         self.assertEqual(expected, self.run_command('doctor', 'surgery'))
 
     def test_successful_surgery_unhealthy_catalog_dryrun(self):
-        path = get_physical_path(self.folder)
+        path = self.get_physical_path(self.folder)
         rid = self.catalog.uids.pop(path)
         self.portal._delObject(self.folder.getId(), suppress_events=True)
 

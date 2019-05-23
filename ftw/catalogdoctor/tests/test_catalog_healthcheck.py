@@ -1,7 +1,6 @@
 from ftw.builder import Builder
 from ftw.builder import create
 from ftw.catalogdoctor.tests import FunctionalTestCase
-from ftw.catalogdoctor.tests import get_physical_path
 from ftw.catalogdoctor.tests import Mock
 from ftw.catalogdoctor.tests import MockFormatter
 
@@ -57,7 +56,7 @@ class TestCatalogHealthCheck(FunctionalTestCase):
         self.assertFalse(result.is_length_healthy())
 
     def test_missing_uid_index_make_catalog_unhealthy(self):
-        rid = self.catalog.uids[get_physical_path(self.folder)]
+        rid = self.get_rid(self.folder)
 
         uid_index = self.catalog.indexes['UID']
         uid_index.unindex_object(rid)
@@ -67,7 +66,7 @@ class TestCatalogHealthCheck(FunctionalTestCase):
 
     def test_detects_duplicate_entry_in_rid_to_path_mapping_keys(self):
         broken_rid = self.choose_next_rid()
-        self.catalog.paths[broken_rid] = get_physical_path(self.folder)
+        self.catalog.paths[broken_rid] = self.get_physical_path(self.folder)
         self.catalog._length.change(1)
 
         result = self.run_healthcheck()
@@ -100,7 +99,7 @@ class TestCatalogHealthCheck(FunctionalTestCase):
             result.get_symptoms(extra_rid))
 
     def test_detects_missing_entry_in_rid_to_path_mapping_values(self):
-        path = get_physical_path(self.folder)
+        path = self.get_physical_path(self.folder)
         rid = self.catalog.uids.pop(path)
 
         result = self.run_healthcheck()
@@ -116,8 +115,7 @@ class TestCatalogHealthCheck(FunctionalTestCase):
             result.get_symptoms(rid))
 
     def test_detects_duplicate_entry_in_path_to_rid_mapping(self):
-        path = get_physical_path(self.folder)
-        rid = self.catalog.uids[path]
+        rid = self.get_rid(self.folder)
         self.catalog.uids['/some/other/path'] = rid
 
         result = self.run_healthcheck()
@@ -132,8 +130,7 @@ class TestCatalogHealthCheck(FunctionalTestCase):
             result.get_symptoms(rid))
 
     def test_detects_missing_entry_in_path_to_rid_mapping(self):
-        path = get_physical_path(self.folder)
-        rid = self.catalog.uids[path]
+        rid = self.get_rid(self.folder)
         del self.catalog.paths[rid]
 
         result = self.run_healthcheck()
