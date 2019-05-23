@@ -70,6 +70,37 @@ class CatalogHealthCheck(object):
                 result.report_symptom(
                     'in_metadata_keys_not_in_uids_values', rid)
 
+        # we consider the uids (path->rid mapping) as source of truth for the
+        # rids "registered" in the catalog. that mapping is also used  in
+        # `catalogObject` to decide whether an object is inserted or
+        # updated, i.e. if entries for an existing rid are updated or if a
+        # new rid is assigned to the path/object.
+        rids_in_catalog = uids_values
+
+        index_values = set(uuid_index._index.values())
+
+        for uuid, rid in uuid_index._index.items():
+            if rid not in uuid_index._unindex:
+                result.report_symptom(
+                    'in_uuid_index_not_in_uuid_unindex', rid)
+            elif uuid_index._unindex[rid] != uuid:
+                result.report_symptom(
+                    'uuid_index_tuple_mismatches_uuid_unindex_tuple', rid)
+            if rid not in rids_in_catalog:
+                result.report_symptom(
+                    'in_uuid_index_not_in_catalog', rid)
+
+        for rid, uuid in uuid_index._unindex.items():
+            if rid not in index_values:
+                result.report_symptom(
+                    'in_uuid_unindex_not_in_uuid_index', rid)
+            elif uuid_index._index[uuid] != rid:
+                result.report_symptom(
+                    'uuid_unindex_tuple_mismatches_uuid_index_tuple', rid)
+            if rid not in rids_in_catalog:
+                result.report_symptom(
+                    'in_uuid_unindex_not_in_catalog', rid)
+
         return result
 
 

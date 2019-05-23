@@ -111,6 +111,8 @@ class TestCatalogHealthCheck(FunctionalTestCase):
                 'in_metadata_keys_not_in_uids_values',
                 'in_paths_keys_not_in_uids_values',
                 'in_paths_values_not_in_uids_keys',
+                'in_uuid_index_not_in_catalog',
+                'in_uuid_unindex_not_in_catalog',
             ),
             result.get_symptoms(rid))
 
@@ -173,6 +175,66 @@ class TestCatalogHealthCheck(FunctionalTestCase):
             (
                 'in_metadata_keys_not_in_paths_keys',
                 'in_metadata_keys_not_in_uids_values',
+            ),
+            result.get_symptoms(extra_rid))
+
+    def test_detects_extra_entry_in_uuid_index(self):
+        extra_rid = self.choose_next_rid()
+        uuid_index = self.catalog.indexes['UID']
+        uuid_index._index['foo'] = extra_rid
+
+        result = self.run_healthcheck()
+
+        self.assertFalse(result.is_healthy())
+        self.assertEqual(1, len(result.unhealthy_rids))
+        self.assertEqual(
+            (
+                'in_uuid_index_not_in_catalog',
+                'in_uuid_index_not_in_uuid_unindex',
+            ),
+            result.get_symptoms(extra_rid))
+
+    def test_detects_swapped_uuid_index_tuple(self):
+        folder_2 = create(Builder('folder').titled(u'Bar'))
+
+        rid = self.get_rid(self.folder)
+        rid_2 = self.get_rid(folder_2)
+        uuid_index = self.catalog.indexes['UID']
+        uuid = uuid_index._unindex[rid]
+        uuid_2 = uuid_index._unindex[rid_2]
+        uuid_index._index[uuid] = rid_2
+        uuid_index._index[uuid_2] = rid
+
+        result = self.run_healthcheck()
+        self.assertFalse(result.is_healthy())
+        self.assertEqual(2, len(result.unhealthy_rids))
+        self.assertEqual(
+            (
+                'uuid_index_tuple_mismatches_uuid_unindex_tuple',
+                'uuid_unindex_tuple_mismatches_uuid_index_tuple',
+            ),
+            result.get_symptoms(rid))
+        self.assertEqual(
+            (
+                'uuid_index_tuple_mismatches_uuid_unindex_tuple',
+                'uuid_unindex_tuple_mismatches_uuid_index_tuple',
+            ),
+            result.get_symptoms(rid_2))
+
+    def test_detects_extra_rid_in_uuid_unindex(self):
+        extra_rid = self.choose_next_rid()
+
+        uuid_index = self.catalog.indexes['UID']
+        uuid_index._unindex[extra_rid] = 'qux'
+
+        result = self.run_healthcheck()
+
+        self.assertFalse(result.is_healthy())
+        self.assertEqual(1, len(result.unhealthy_rids))
+        self.assertEqual(
+            (
+                'in_uuid_unindex_not_in_catalog',
+                'in_uuid_unindex_not_in_uuid_index',
             ),
             result.get_symptoms(extra_rid))
 

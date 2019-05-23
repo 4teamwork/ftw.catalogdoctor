@@ -56,6 +56,7 @@ class Surgery(object):
                 raise CantPerformSurgery(
                     'Unhandled index type: {0!r}'.format(idx))
 
+            removed_from_forward_index = False
             entries_pointing_to_rid = [
                 val for val, rid_in_index in idx._index.items()
                 if rid_in_index == rid]
@@ -67,15 +68,18 @@ class Surgery(object):
                         ' '.join(entries_pointing_to_rid)))
                 entry = entries_pointing_to_rid[0]
                 del idx._index[entry]
+                removed_from_forward_index = True
 
             if rid in idx._unindex:
                 del idx._unindex[rid]
 
-            # This should eventually converge to
-            # len(_index) == len(_unindex) == _length.value
-            actual_min_length = min(len(idx._index), len(idx._unindex))
-            length_delta = idx._length.value - actual_min_length
-            idx._length.change(length_delta)
+            # The method removeForwardIndexEntry from UnIndex updates the
+            # index length. We assume we only have to update the index length
+            # when we remove the entry from the forward index, assuming somehow
+            # removeForwardIndexEntry has not been called or raised an
+            # exception
+            if removed_from_forward_index:
+                idx._length.change(-1)
 
         self.surgery_log.append(
             "Removed rid from all catalog indexes.")
@@ -173,14 +177,20 @@ class CatalogDoctor(object):
     be treated.
     """
     surgeries = {
-        ('in_metadata_keys_not_in_uids_values',
-         'in_paths_keys_not_in_uids_values',
-         'uids_tuple_mismatches_paths_tuple',
-         ): RemoveExtraRid,
-        ('in_metadata_keys_not_in_uids_values',
-         'in_paths_keys_not_in_uids_values',
-         'in_paths_values_not_in_uids_keys'
-         ): RemoveOrphanedRid,
+        (
+            'in_metadata_keys_not_in_uids_values',
+            'in_paths_keys_not_in_uids_values',
+            'in_uuid_unindex_not_in_catalog',
+            'in_uuid_unindex_not_in_uuid_index',
+            'uids_tuple_mismatches_paths_tuple',
+        ): RemoveExtraRid,
+        (
+            'in_metadata_keys_not_in_uids_values',
+            'in_paths_keys_not_in_uids_values',
+            'in_paths_values_not_in_uids_keys',
+            'in_uuid_unindex_not_in_catalog',
+            'in_uuid_unindex_not_in_uuid_index',
+        ): RemoveOrphanedRid,
     }
 
     def __init__(self, catalog, unhealthy_rid):

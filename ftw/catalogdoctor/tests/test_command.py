@@ -100,6 +100,9 @@ class TestDoctorCommand(FunctionalTestCase):
     def test_successful_surgery_unhealthy_catalog(self):
         path = self.get_physical_path(self.folder)
         rid = self.catalog.uids.pop(path)
+        # drop from uid index index, leave in unindex
+        uid_index = self.catalog.indexes['UID']
+        uid_index.removeForwardIndexEntry(uid_index._unindex[rid], rid)
         self.portal._delObject(self.folder.getId(), suppress_events=True)
 
         expected = [
@@ -109,14 +112,16 @@ class TestDoctorCommand(FunctionalTestCase):
             ' uids length: 0',
             ' paths length: 1',
             ' metadata length: 1',
-            ' uid index claimed length: 1',
-            ' uid index index length: 1',
+            ' uid index claimed length: 0',
+            ' uid index index length: 0',
             ' uid index unindex length: 1',
             'Catalog data is unhealthy, found 1 unhealthy rids:',
             'rid {} (\'/plone/foo\'):'.format(rid),
             '\t- in_metadata_keys_not_in_uids_values',
             '\t- in_paths_keys_not_in_uids_values',
             '\t- in_paths_values_not_in_uids_keys',
+            '\t- in_uuid_unindex_not_in_catalog',
+            '\t- in_uuid_unindex_not_in_uuid_index',
             '',
             'Performing surgery:',
             'rid {} (\'/plone/foo\'):'.format(rid),
@@ -135,6 +140,9 @@ class TestDoctorCommand(FunctionalTestCase):
     def test_successful_surgery_unhealthy_catalog_dryrun(self):
         path = self.get_physical_path(self.folder)
         rid = self.catalog.uids.pop(path)
+        # drop from uid index index, leave in unindex
+        uid_index = self.catalog.indexes['UID']
+        uid_index.removeForwardIndexEntry(uid_index._unindex[rid], rid)
         self.portal._delObject(self.folder.getId(), suppress_events=True)
 
         expected = [
@@ -146,14 +154,16 @@ class TestDoctorCommand(FunctionalTestCase):
             ' uids length: 0',
             ' paths length: 1',
             ' metadata length: 1',
-            ' uid index claimed length: 1',
-            ' uid index index length: 1',
+            ' uid index claimed length: 0',
+            ' uid index index length: 0',
             ' uid index unindex length: 1',
             'Catalog data is unhealthy, found 1 unhealthy rids:',
             'rid {} (\'/plone/foo\'):'.format(rid),
             '\t- in_metadata_keys_not_in_uids_values',
             '\t- in_paths_keys_not_in_uids_values',
             '\t- in_paths_values_not_in_uids_keys',
+            '\t- in_uuid_unindex_not_in_catalog',
+            '\t- in_uuid_unindex_not_in_uuid_index',
             '',
             'Performing surgery:',
             'rid {} (\'/plone/foo\'):'.format(rid),
