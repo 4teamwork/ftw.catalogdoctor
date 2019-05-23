@@ -1,5 +1,29 @@
 from ftw.catalogdoctor.exceptions import CantPerformSurgery
 from plone import api
+from plone.app.folder.nogopip import GopipIndex
+from Products.ExtendedPathIndex.ExtendedPathIndex import ExtendedPathIndex
+from Products.PluginIndexes.BooleanIndex.BooleanIndex import BooleanIndex
+from Products.PluginIndexes.DateIndex.DateIndex import DateIndex
+from Products.PluginIndexes.DateRangeIndex.DateRangeIndex import DateRangeIndex
+from Products.PluginIndexes.FieldIndex.FieldIndex import FieldIndex
+from Products.PluginIndexes.KeywordIndex.KeywordIndex import KeywordIndex
+from Products.PluginIndexes.UUIDIndex.UUIDIndex import UUIDIndex
+from Products.ZCTextIndex.ZCTextIndex import ZCTextIndex
+
+
+# optional collective.indexing support
+try:
+    from collective.indexing.queue import processQueue
+except ImportError:
+    def processQueue():
+        pass
+
+# optional Products.DateRecurringIndex support
+try:
+    from Products.DateRecurringIndex.index import DateRecurringIndex
+except ImportError:
+    class DateRecurringIndex(object):
+        pass
 
 
 class Surgery(object):
@@ -14,8 +38,44 @@ class Surgery(object):
         raise NotImplementedError
 
     def unindex_rid_from_all_catalog_indexes(self, rid):
-        for index in self.catalog.indexes.values():
-            index.unindex_object(rid)  # fail in case of no `unindex_object`
+        for idx in self.catalog.indexes.values():
+            if isinstance(idx, GopipIndex):
+                # Not a real index
+                continue
+
+            if isinstance(idx, (ZCTextIndex, DateRangeIndex,
+                                DateRecurringIndex, BooleanIndex)):
+                # These are more complex index types, that we don't handle
+                # on a low level. We have to hope .unindex_object is able
+                # to uncatalog the object and doesn't raise a KeyError.
+                idx.unindex_object(rid)
+                continue
+
+            if not isinstance(idx, (DateIndex, FieldIndex, KeywordIndex,
+                                    ExtendedPathIndex, UUIDIndex)):
+                raise CantPerformSurgery(
+                    'Unhandled index type: {0!r}'.format(idx))
+
+            entries_pointing_to_rid = [
+                val for val, rid_in_index in idx._index.items()
+                if rid_in_index == rid]
+            if entries_pointing_to_rid:
+                # Not quite sure yet if this actually *can* happen
+                if len(entries_pointing_to_rid) != 1:
+                    raise CantPerformSurgery(
+                        'Multiple entries pointing to rid: {}'.format(
+                        ' '.join(entries_pointing_to_rid)))
+                entry = entries_pointing_to_rid[0]
+                del idx._index[entry]
+
+            if rid in idx._unindex:
+                del idx._unindex[rid]
+
+            # This should eventually converge to
+            # len(_index) == len(_unindex) == _length.value
+            actual_min_length = min(len(idx._index), len(idx._unindex))
+            length_delta = idx._length.value - actual_min_length
+            idx._length.change(length_delta)
 
         self.surgery_log.append(
             "Removed rid from all catalog indexes.")
