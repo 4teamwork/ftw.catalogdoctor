@@ -1,3 +1,4 @@
+from Acquisition import aq_base
 from ftw.catalogdoctor.command import doctor_cmd
 from ftw.catalogdoctor.healthcheck import CatalogHealthCheck
 from ftw.catalogdoctor.testing import CATALOGDOCTOR_FUNCTIONAL
@@ -9,6 +10,7 @@ from random import randint
 from StringIO import StringIO
 from unittest2 import TestCase
 import transaction
+import uuid
 
 
 class MockFormatter(object):
@@ -116,3 +118,50 @@ class FunctionalTestCase(TestCase):
 
     def get_physical_path(self, obj):
         return '/'.join(obj.getPhysicalPath())
+
+    def make_unhealthy_extra_rid_after_move(self, obj, new_id=None):
+        """Make catalog unhealthy and create an extra rid for obj.
+
+        :param obj: the object that will have an unhealthy additional rid
+        :param new_id: the target object id after the object has been moved.
+          An UUID4 is used if this argument is not supplied.
+
+        Simulate an issue when objects are reindexed prematurely while plone is
+        processing the IObjectWillBeMovedEvent and IObjectMovedEvent events.
+        This issue only surfaces when `ftw.copymovepatches` is installed and
+        is also described in detail in:
+        https://github.com/4teamwork/opengever.core/pull/5533
+        The premature reindex can be caused by e.g. a catalog query in another
+        event handler for IOBjectMoved.
+
+        - Move the object without firing moved events. Disconnects object from
+          catalogs path->rid mapping as the object will have a new path.
+        - Reindex the object, this adds a new entry to the catalog and the
+          catalog indices. As already mentioned the catalog uses its internal
+          path->rid mapping to decide if the object is inserted or updated.
+        - Simulate ftw.copymovepatches optimized move that is applied to the
+          old data which breaks the catalog.
+
+        """
+        new_id = new_id or str(uuid.uuid4())
+        old_rid = self.get_rid(obj)  # keep old rid for ftw.copymovepatches
+
+        # move without firing events, disconnect ob from catalog
+        old_id = self.child.getId()
+        ob = self.parent._getOb(old_id)
+        self.parent._delObject(old_id, suppress_events=True)
+        ob = aq_base(ob)
+        ob._setId(new_id)
+        self.parent._setObject(new_id, ob, set_owner=0, suppress_events=True)
+        ob = self.parent._getOb(new_id)
+        ob._postCopy(self, op=1)
+
+        # reindex ob, create new rid in catalog and new entries
+        self.reindex_object(ob)
+
+        # simulate ftw.copymovepatches optimized move, breaks catalog entries
+        new_path = '/'.join(ob.getPhysicalPath())
+        old_path = self.catalog.paths[old_rid]
+        del self.catalog.uids[old_path]
+        self.catalog.uids[new_path] = old_rid
+        self.catalog.paths[old_rid] = new_path
