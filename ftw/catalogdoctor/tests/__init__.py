@@ -1,8 +1,8 @@
 from Acquisition import aq_base
 from ftw.catalogdoctor.command import doctor_cmd
+from ftw.catalogdoctor.compat import processQueue
 from ftw.catalogdoctor.healthcheck import CatalogHealthCheck
 from ftw.catalogdoctor.testing import CATALOGDOCTOR_FUNCTIONAL
-from ftw.testing import IS_PLONE_5
 from plone import api
 from plone.app.testing import setRoles
 from plone.app.testing import TEST_USER_ID
@@ -106,10 +106,6 @@ class FunctionalTestCase(TestCase):
         self.maybe_process_indexing_queue()
 
     def maybe_process_indexing_queue(self):
-        if not IS_PLONE_5:
-            return
-
-        from Products.CMFCore.indexing import processQueue
         processQueue()
 
     def get_rid(self, obj):

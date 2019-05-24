@@ -1,3 +1,4 @@
+from ftw.catalogdoctor.compat import DateRecurringIndex
 from ftw.catalogdoctor.exceptions import CantPerformSurgery
 from plone import api
 from plone.app.folder.nogopip import GopipIndex
@@ -9,21 +10,6 @@ from Products.PluginIndexes.FieldIndex.FieldIndex import FieldIndex
 from Products.PluginIndexes.KeywordIndex.KeywordIndex import KeywordIndex
 from Products.PluginIndexes.UUIDIndex.UUIDIndex import UUIDIndex
 from Products.ZCTextIndex.ZCTextIndex import ZCTextIndex
-
-
-# optional collective.indexing support
-try:
-    from collective.indexing.queue import processQueue
-except ImportError:
-    def processQueue():
-        pass
-
-# optional Products.DateRecurringIndex support
-try:
-    from Products.DateRecurringIndex.index import DateRecurringIndex
-except ImportError:
-    class DateRecurringIndex(object):
-        pass
 
 
 class Surgery(object):
