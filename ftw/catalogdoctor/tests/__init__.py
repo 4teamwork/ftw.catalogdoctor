@@ -61,7 +61,7 @@ class FunctionalTestCase(TestCase):
         return healthcheck.run()
 
     def choose_next_rid(self):
-        """Return a rid for testing currently unused.
+        """Return a currently unused rid for testing.
 
         It will avoid returning rids already used by the catalog or already
         chosen by an earlier call to this method during the same test-case
