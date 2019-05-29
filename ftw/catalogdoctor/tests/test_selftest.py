@@ -146,3 +146,103 @@ class TestSelftest(FunctionalTestCase):
                 'uids_tuple_mismatches_paths_tuple',
             ),
             result.get_symptoms(extra_rid))
+
+    @skipIf(IS_PLONE_5, "Seems to work on Plone >= 5.")
+    def test_make_orphaned_rid(self):
+        self.make_orphaned_rid(self.child)
+
+        result = self.run_healthcheck()
+        self.assertFalse(result.is_healthy())
+        self.assertEqual(1, len(result.unhealthy_rids))
+        orphaned_rid = result.get_unhealthy_rids()[0].rid
+
+        self.assertTrue(orphaned_rid in self.catalog.paths)
+        self.assertFalse(orphaned_rid in self.catalog.uids.values())
+
+        uuid_index = self.catalog.indexes['UID']
+        self.assertTrue(orphaned_rid in uuid_index._unindex)
+        self.assertFalse(orphaned_rid in uuid_index._index.values())
+
+        for name, index in self.catalog.indexes.items():
+            # Purposefully don't use isinstance to avoid being bitten by
+            # subclasses that change how the index behaves or add additional
+            # internal data structures which we would not cover here, e.g.:
+            # `ExtendedPathIndex` v.s. `PathIndex`.
+
+            if index.__class__ in (FieldIndex, DateIndex,
+                                   DateRecurringIndex, KeywordIndex):
+                # These indices seem to consistently contain the orphaned rid,
+                # i.e. it is left behind in the forward index and also in the
+                # backward indices.
+                rows_with_rid = [row for row in index._index.values()
+                                 if orphaned_rid in row]
+                if rows_with_rid:
+                    self.assertIn(orphaned_rid, index._unindex)
+                if orphaned_rid in index._unindex:
+                    self.assertGreaterEqual(len(rows_with_rid), 1)
+
+            elif index.__class__ == ZCTextIndex:
+                # Our broken object test provides values for all ZCTextIndex
+                # indices. All ZCTextIndex indices that contain the extra rid
+                # seem to contain it consistently.
+                self.assertTrue(index.index.has_doc(orphaned_rid))
+
+            elif index.__class__ == UUIDIndex:
+                # We expect only one UUIDIndex and we have already handled it
+                # explicitly above
+                if name != 'UID':
+                    self.fail('Unexpected uuid index: {}'.format(index))
+
+            elif index.__class__ == DateRangeIndex:
+                # The index seems to be consistent, forward and backward
+                # indices contain the orphaned rid.
+                self.assertTrue(orphaned_rid in index._unindex)
+                self.assertTrue(any((
+                    # _always: [rid]
+                    orphaned_rid in index._always,
+                    # all other extra indices provide: {date: [rid]}
+                    self._find_rows_with_rid(index._since_only, orphaned_rid),
+                    self._find_rows_with_rid(index._until_only, orphaned_rid),
+                    self._find_rows_with_rid(index._since, orphaned_rid),
+                    self._find_rows_with_rid(index._until, orphaned_rid),
+                    )))
+
+            elif index.__class__ == BooleanIndex:
+                # The index seems to be consistent, forward and backward
+                # indices contain the orphaned rid.
+                self.assertIn(orphaned_rid, index._unindex)
+                if index._unindex[orphaned_rid] == index._index_value:
+                    self.assertIn(orphaned_rid, index._index)
+
+            elif index.__class__ == ExtendedPathIndex:
+                # The index seems to be consistent, forward and backward
+                # indices contain the orphaned rid.
+                # _unindex: {rid: path}
+                self.assertIn(orphaned_rid, index._unindex)
+                # _index_items: {path: rid}
+                self.assertIn(orphaned_rid, index._index_items.values())
+                # _index_parents: {path: [rid]} (path to rid of children)
+                paths_with_rid_as_child = [path for path, rids in index._index_parents.items()
+                                           if orphaned_rid in rids]
+                self.assertEqual(1, len(paths_with_rid_as_child))
+                # _index: {component: {level: [rid]}} (component to level to rid)
+                components_with_rid = [component for component, level_to_rid in index._index.items()
+                                       if any(orphaned_rid in rids for level, rids in level_to_rid.items())]
+                self.assertGreaterEqual(len(components_with_rid), 1)
+
+            elif index.__class__ == GopipIndex:
+                # This isn't a real index.
+                pass
+
+            else:
+                self.fail('Unhandled index type: {}'.format(index))
+
+        self.assertEqual(
+            (
+                'in_metadata_keys_not_in_uids_values',
+                'in_paths_keys_not_in_uids_values',
+                'in_paths_values_not_in_uids_keys',
+                'in_uuid_unindex_not_in_catalog',
+                'in_uuid_unindex_not_in_uuid_index',
+            ),
+            result.get_symptoms(orphaned_rid))

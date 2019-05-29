@@ -161,3 +161,21 @@ class FunctionalTestCase(TestCase):
         del self.catalog.uids[old_path]
         self.catalog.uids[new_path] = old_rid
         self.catalog.paths[old_rid] = new_path
+
+        return ob
+
+    def make_orphaned_rid(self, obj):
+        """Make catalog unhealthy and create an orphaned rid for obj.
+
+        :param obj: the object that will be deleted and leave an unhealthy rid
+                    behind.
+
+        This simulates an issue that surfaces when an object with an extra
+        rid as created by `make_unhealthy_extra_rid_after_move` is deleted.
+
+        """
+        ob = self.make_unhealthy_extra_rid_after_move(obj)
+        ob.aq_parent.manage_delObjects([ob.getId()])
+
+        self.maybe_process_indexing_queue()
+        return ob
