@@ -1,3 +1,6 @@
+from pprint import pprint
+
+
 def btrees_to_python_collections(maybe_btrees):
     """Convert collections from btrees to python collections for debugging.
 
@@ -14,30 +17,6 @@ def btrees_to_python_collections(maybe_btrees):
     command line for debugging. It can be uses in combination with pprint to
     quickly analize the state of the catalog's internal data structures.
 
-    Sample output looks like:
-
-    >>> index = plone.portal_catalog._catalog.indexes['path']
-    >>> from pprint import pprint
-    >>> pprint(btrees_to_python_collections(index._index))
-    {None: {1: [97], 2: [98, 99]},
-     'child': {2: [98]},
-     'otherchild': {2: [99]},
-     'parent': {1: [97, 98, 99]},
-     'plone': {0: [97, 98, 99]}}
-
-    >>> pprint(btrees_to_python_collections(index._unindex))
-    {97: '/plone/parent',
-     98: '/plone/parent/child',
-     99: '/plone/parent/otherchild'}
-
-    >>> pprint(btrees_to_python_collections(index._index_items))
-    {'/plone/parent': 97,
-     '/plone/parent/child': 98,
-     '/plone/parent/otherchild': 99}
-
-    >>> pprint(btrees_to_python_collections(index._index_parents))
-    {'/plone': [97],
-     '/plone/parent': [98, 99]}
     """
     if isinstance(maybe_btrees, (int, basestring)):
         return maybe_btrees
@@ -46,3 +25,34 @@ def btrees_to_python_collections(maybe_btrees):
                      for key, val in maybe_btrees.items())
     else:
         return list(maybe_btrees)
+
+
+def pprint_btrees(btrees):
+    """pretty print a collection from btrees.
+
+    Sample output looks like:
+
+    >>> index = plone.portal_catalog._catalog.indexes['path']
+    >>> pprint_btrees(index._index)
+    {None: {1: [97], 2: [98, 99]},
+     'child': {2: [98]},
+     'otherchild': {2: [99]},
+     'parent': {1: [97, 98, 99]},
+     'plone': {0: [97, 98, 99]}}
+
+    >>> pprint_btrees(index._unindex)
+    {97: '/plone/parent',
+     98: '/plone/parent/child',
+     99: '/plone/parent/otherchild'}
+
+    >>> pprint_btrees(index._index_items)
+    {'/plone/parent': 97,
+     '/plone/parent/child': 98,
+     '/plone/parent/otherchild': 99}
+
+    >>> pprint_btrees(index._index_parents)
+    {'/plone': [97],
+     '/plone/parent': [98, 99]}
+
+    """
+    pprint(btrees_to_python_collections(btrees))
