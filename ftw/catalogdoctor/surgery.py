@@ -12,8 +12,53 @@ from Products.PluginIndexes.UUIDIndex.UUIDIndex import UUIDIndex
 from Products.ZCTextIndex.ZCTextIndex import ZCTextIndex
 
 
+class NullSurgery(object):
+    """Don't do anything."""
+
+    def __init__(self, index, rid):
+        pass
+
+    def perform(self):
+        pass
+
+
+class RemoveFromUnIndex(object):
+    """Remove a rid from a simple forward and reverse index."""
+
+    def __init__(self, index, rid):
+        self.index = index
+        self.rid = rid
+
+    def perform(self):
+        entries_pointing_to_rid = [
+            val for val, rids_in_index in self.index._index.items()
+            if self.rid in rids_in_index]
+        if entries_pointing_to_rid:
+            # Could happen in case of an index which has `indexed_attrs` set in
+            # extra arguments.
+            for entry in entries_pointing_to_rid:
+                del self.index._index[entry]
+                # The method removeForwardIndexEntry from UnIndex updates the
+                # index length. We assume we only have to update the index
+                # length when we remove the entry from the forward index,
+                # assuming somehow removeForwardIndexEntry has not been called
+                # or raised an exception
+                self.index._length.change(-1)
+
+        if self.rid in self.index._unindex:
+            del self.index._unindex[self.rid]
+
+
 class Surgery(object):
     """Surgery can fix a concrete set of symptoms."""
+
+    removal = {
+        DateIndex: RemoveFromUnIndex,
+        DateRecurringIndex: RemoveFromUnIndex,
+        FieldIndex: RemoveFromUnIndex,
+        GopipIndex: NullSurgery,  # not a real index
+        KeywordIndex: RemoveFromUnIndex,
+    }
 
     def __init__(self, catalog, unhealthy_rid):
         self.catalog = catalog
@@ -25,8 +70,9 @@ class Surgery(object):
 
     def unindex_rid_from_all_catalog_indexes(self, rid):
         for idx in self.catalog.indexes.values():
-            if isinstance(idx, GopipIndex):
-                # Not a real index
+            surgery = self.removal.get(type(idx))
+            if surgery:
+                surgery(idx, rid).perform()
                 continue
 
             if isinstance(idx, (ZCTextIndex, DateRangeIndex,
@@ -37,8 +83,7 @@ class Surgery(object):
                 idx.unindex_object(rid)
                 continue
 
-            if not isinstance(idx, (DateIndex, FieldIndex, KeywordIndex,
-                                    ExtendedPathIndex, UUIDIndex)):
+            if not isinstance(idx, (ExtendedPathIndex, UUIDIndex)):
                 raise CantPerformSurgery(
                     'Unhandled index type: {0!r}'.format(idx))
 
