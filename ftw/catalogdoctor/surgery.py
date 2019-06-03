@@ -19,6 +19,38 @@ class IndexSurgery(object):
         self.index = index
         self.rid = rid
 
+    def _remove_keys_pointing_to_rid(self, index):
+        """Remove all entries pointing to rid from a forward index.
+
+        Rows in indices are expected to be a set, e.g. a `TreeSet`. Once the
+        set is emtpy it should also be removed from the index.
+
+        """
+        for key in find_keys_pointing_to_rid(index, self.rid):
+            row = index[key]
+            row.remove(self.rid)
+            if not row:
+                del index[key]
+                # The method removeForwardIndexEntry from UnIndex updates the
+                # index length. We assume we only have to update the index
+                # length when we remove the entry from the forward index,
+                # assuming somehow removeForwardIndexEntry has not been called
+                # or raised an exception
+                self._decrease_length()
+
+    def _remove_rid_from_unindex(self, unindex):
+        """Remove rid from a reverse index."""
+
+        if self.rid in unindex:
+            del unindex[self.rid]
+
+    def _decrease_length(self):
+        """Call this when the index length should be decreased.
+
+        Usually when there is one forward index and the forward index changes.
+        """
+        self.index._length.change(-1)
+
     def perform(self):
         raise NotImplementedError
 
@@ -34,22 +66,29 @@ class RemoveFromUnIndex(IndexSurgery):
     """Remove a rid from a simple forward and reverse index."""
 
     def perform(self):
-        entries_pointing_to_rid = find_keys_pointing_to_rid(
-            self.index, self.rid)
-        if entries_pointing_to_rid:
-            # Could happen in case of an index which has `indexed_attrs` set in
-            # extra arguments.
-            for entry in entries_pointing_to_rid:
-                del self.index._index[entry]
-                # The method removeForwardIndexEntry from UnIndex updates the
-                # index length. We assume we only have to update the index
-                # length when we remove the entry from the forward index,
-                # assuming somehow removeForwardIndexEntry has not been called
-                # or raised an exception
-                self.index._length.change(-1)
+        self._remove_keys_pointing_to_rid(self.index._index)
+        self._remove_rid_from_unindex(self.index._unindex)
 
-        if self.rid in self.index._unindex:
-            del self.index._unindex[self.rid]
+
+class RemoveFromDateRangeIndex(IndexSurgery):
+    """Remove rid from a `DateRangeIndex`."""
+
+    def perform(self):
+        if self.rid in self.index._always:
+            self.index._always.remove(self.rid)
+
+        for index in (
+                self.index._since_only,
+                self.index._until_only,
+                self.index._since,
+                self.index._until):
+            self._remove_keys_pointing_to_rid(index)
+
+        self._remove_rid_from_unindex(self.index._unindex)
+
+    def _decrease_length(self):
+        """A `DateRangeIndex` seems to have a constant length of 0."""
+        pass
 
 
 class UnindexObject(IndexSurgery):
@@ -64,6 +103,7 @@ class Surgery(object):
 
     removal = {
         DateIndex: RemoveFromUnIndex,
+        DateRangeIndex: RemoveFromDateRangeIndex,
         DateRecurringIndex: RemoveFromUnIndex,
         FieldIndex: RemoveFromUnIndex,
         GopipIndex: NullSurgery,  # not a real index
@@ -86,8 +126,7 @@ class Surgery(object):
                 surgery(idx, rid).perform()
                 continue
 
-            if isinstance(idx, (DateRangeIndex,
-                                DateRecurringIndex, BooleanIndex)):
+            if isinstance(idx, (BooleanIndex,)):
                 # These are more complex index types, that we don't handle
                 # on a low level. We have to hope .unindex_object is able
                 # to uncatalog the object and doesn't raise a KeyError.
