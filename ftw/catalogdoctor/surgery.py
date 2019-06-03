@@ -1,5 +1,6 @@
 from ftw.catalogdoctor.compat import DateRecurringIndex
 from ftw.catalogdoctor.exceptions import CantPerformSurgery
+from ftw.catalogdoctor.utils import find_keys_pointing_to_rid
 from plone import api
 from plone.app.folder.nogopip import GopipIndex
 from Products.ExtendedPathIndex.ExtendedPathIndex import ExtendedPathIndex
@@ -33,9 +34,8 @@ class RemoveFromUnIndex(IndexSurgery):
     """Remove a rid from a simple forward and reverse index."""
 
     def perform(self):
-        entries_pointing_to_rid = [
-            val for val, rids_in_index in self.index._index.items()
-            if self.rid in rids_in_index]
+        entries_pointing_to_rid = find_keys_pointing_to_rid(
+            self.index, self.rid)
         if entries_pointing_to_rid:
             # Could happen in case of an index which has `indexed_attrs` set in
             # extra arguments.

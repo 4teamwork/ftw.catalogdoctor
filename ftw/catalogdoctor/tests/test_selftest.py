@@ -3,6 +3,7 @@ from ftw.builder import Builder
 from ftw.builder import create
 from ftw.catalogdoctor.compat import DateRecurringIndex
 from ftw.catalogdoctor.tests import FunctionalTestCase
+from ftw.catalogdoctor.utils import find_keys_pointing_to_rid
 from plone.app.folder.nogopip import GopipIndex
 from Products.ExtendedPathIndex.ExtendedPathIndex import ExtendedPathIndex
 from Products.PluginIndexes.BooleanIndex.BooleanIndex import BooleanIndex
@@ -34,10 +35,6 @@ class TestSelftest(FunctionalTestCase):
         self.child.recurrence = 'FREQ=DAILY;INTERVAL=1;COUNT=5'
         self.child.isPrincipiaFolderish = False
         self.reindex_object(self.child)
-
-    def _find_rows_with_rid(self, dictish, rid):
-        rows_with_rid = [row for row in dictish.values() if rid in row]
-        return rows_with_rid
 
     def test_make_unhealthy_extra_rid_after_move(self):
         """Selftest that broken rids are created correctly.
@@ -74,8 +71,8 @@ class TestSelftest(FunctionalTestCase):
                 # These indices seem to consistently contain the extra rid, i.e.
                 # it is left behind in the forward index and also in the
                 # backward indices.
-                rows_with_rid = [row for row in index._index.values()
-                                 if extra_rid in row]
+                rows_with_rid = find_keys_pointing_to_rid(
+                    index._index, extra_rid)
                 if rows_with_rid:
                     self.assertIn(extra_rid, index._unindex)
                 if extra_rid in index._unindex:
@@ -101,10 +98,10 @@ class TestSelftest(FunctionalTestCase):
                     # _always: [rid]
                     extra_rid in index._always,
                     # all other extra indices provide: {date: [rid]}
-                    self._find_rows_with_rid(index._since_only, extra_rid),
-                    self._find_rows_with_rid(index._until_only, extra_rid),
-                    self._find_rows_with_rid(index._since, extra_rid),
-                    self._find_rows_with_rid(index._until, extra_rid),
+                    find_keys_pointing_to_rid(index._since_only, extra_rid),
+                    find_keys_pointing_to_rid(index._until_only, extra_rid),
+                    find_keys_pointing_to_rid(index._since, extra_rid),
+                    find_keys_pointing_to_rid(index._until, extra_rid),
                     )))
 
             elif index.__class__ == BooleanIndex:
@@ -122,8 +119,8 @@ class TestSelftest(FunctionalTestCase):
                 # _index_items: {path: rid}
                 self.assertIn(extra_rid, index._index_items.values())
                 # _index_parents: {path: [rid]} (path to rid of children)
-                paths_with_rid_as_child = [path for path, rids in index._index_parents.items()
-                                           if extra_rid in rids]
+                paths_with_rid_as_child = find_keys_pointing_to_rid(
+                    index._index_parents, extra_rid)
                 self.assertEqual(1, len(paths_with_rid_as_child))
                 # _index: {component: {level: [rid]}} (component to level to rid)
                 components_with_rid = [component for component, level_to_rid in index._index.items()
@@ -147,7 +144,6 @@ class TestSelftest(FunctionalTestCase):
             ),
             result.get_symptoms(extra_rid))
 
-    @skipIf(IS_PLONE_5, "Seems to work on Plone >= 5.")
     def test_make_orphaned_rid(self):
         self.make_orphaned_rid(self.child)
 
@@ -174,8 +170,8 @@ class TestSelftest(FunctionalTestCase):
                 # These indices seem to consistently contain the orphaned rid,
                 # i.e. it is left behind in the forward index and also in the
                 # backward indices.
-                rows_with_rid = [row for row in index._index.values()
-                                 if orphaned_rid in row]
+                rows_with_rid = find_keys_pointing_to_rid(
+                    index._index, orphaned_rid)
                 if rows_with_rid:
                     self.assertIn(orphaned_rid, index._unindex)
                 if orphaned_rid in index._unindex:
@@ -201,10 +197,10 @@ class TestSelftest(FunctionalTestCase):
                     # _always: [rid]
                     orphaned_rid in index._always,
                     # all other extra indices provide: {date: [rid]}
-                    self._find_rows_with_rid(index._since_only, orphaned_rid),
-                    self._find_rows_with_rid(index._until_only, orphaned_rid),
-                    self._find_rows_with_rid(index._since, orphaned_rid),
-                    self._find_rows_with_rid(index._until, orphaned_rid),
+                    find_keys_pointing_to_rid(index._since_only, orphaned_rid),
+                    find_keys_pointing_to_rid(index._until_only, orphaned_rid),
+                    find_keys_pointing_to_rid(index._since, orphaned_rid),
+                    find_keys_pointing_to_rid(index._until, orphaned_rid),
                     )))
 
             elif index.__class__ == BooleanIndex:
@@ -222,8 +218,8 @@ class TestSelftest(FunctionalTestCase):
                 # _index_items: {path: rid}
                 self.assertIn(orphaned_rid, index._index_items.values())
                 # _index_parents: {path: [rid]} (path to rid of children)
-                paths_with_rid_as_child = [path for path, rids in index._index_parents.items()
-                                           if orphaned_rid in rids]
+                paths_with_rid_as_child = find_keys_pointing_to_rid(
+                    index._index_parents, orphaned_rid)
                 self.assertEqual(1, len(paths_with_rid_as_child))
                 # _index: {component: {level: [rid]}} (component to level to rid)
                 components_with_rid = [component for component, level_to_rid in index._index.items()

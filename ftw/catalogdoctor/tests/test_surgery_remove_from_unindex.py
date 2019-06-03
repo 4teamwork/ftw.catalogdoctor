@@ -4,18 +4,10 @@ from ftw.builder import create
 from ftw.catalogdoctor.compat import DateRecurringIndex
 from ftw.catalogdoctor.surgery import RemoveFromUnIndex
 from ftw.catalogdoctor.tests import FunctionalTestCase
+from ftw.catalogdoctor.utils import find_keys_pointing_to_rid
 from Products.PluginIndexes.DateIndex.DateIndex import DateIndex
 from Products.PluginIndexes.FieldIndex.FieldIndex import FieldIndex
 from Products.PluginIndexes.KeywordIndex.KeywordIndex import KeywordIndex
-
-
-def unindex_entries_pointing_to_rid(index, rid):
-    """Return all entries in an UnIndex forward index pointing to rid."""
-
-    entries_pointing_to_rid = [
-        val for val, rids_in_index in index._index.items()
-        if rid in rids_in_index]
-    return entries_pointing_to_rid
 
 
 class TestRemoveFromUnIndex(FunctionalTestCase):
@@ -30,7 +22,7 @@ class TestRemoveFromUnIndex(FunctionalTestCase):
         rid = self.get_rid(self.folder)
         index = self.catalog.indexes['Type']
 
-        entries_pointing_to_rid = unindex_entries_pointing_to_rid(index, rid)
+        entries_pointing_to_rid = find_keys_pointing_to_rid(index, rid)
         self.assertEqual(1, len(entries_pointing_to_rid))
         self.assertIn(rid, index._unindex)
         self.assertEqual(1, len(index))
@@ -41,7 +33,7 @@ class TestRemoveFromUnIndex(FunctionalTestCase):
         surgery = RemoveFromUnIndex(index, rid)
         surgery.perform()
 
-        entries_pointing_to_rid = unindex_entries_pointing_to_rid(index, rid)
+        entries_pointing_to_rid = find_keys_pointing_to_rid(index, rid)
         self.assertEqual(0, len(entries_pointing_to_rid))
         self.assertNotIn(rid, index._unindex)
         self.assertEqual(0, len(index))
@@ -50,7 +42,7 @@ class TestRemoveFromUnIndex(FunctionalTestCase):
         rid = self.get_rid(self.folder)
         index = self.catalog.indexes['Type']
 
-        entries_pointing_to_rid = unindex_entries_pointing_to_rid(index, rid)
+        entries_pointing_to_rid = find_keys_pointing_to_rid(index, rid)
         self.assertEqual(1, len(entries_pointing_to_rid))
         self.assertIn(rid, index._unindex)
         self.assertEqual(1, len(index))
@@ -60,7 +52,7 @@ class TestRemoveFromUnIndex(FunctionalTestCase):
         surgery = RemoveFromUnIndex(index, rid)
         surgery.perform()
 
-        entries_pointing_to_rid = unindex_entries_pointing_to_rid(index, rid)
+        entries_pointing_to_rid = find_keys_pointing_to_rid(index, rid)
         self.assertEqual(0, len(entries_pointing_to_rid))
         self.assertNotIn(rid, index._unindex)
         self.assertEqual(0, len(index))
@@ -70,7 +62,7 @@ class TestRemoveFromUnIndex(FunctionalTestCase):
         index = self.catalog.indexes['Type']
         self.assertIs(FieldIndex, type(index))
 
-        entries_pointing_to_rid = unindex_entries_pointing_to_rid(index, rid)
+        entries_pointing_to_rid = find_keys_pointing_to_rid(index, rid)
         self.assertEqual(1, len(entries_pointing_to_rid))
         self.assertIn(rid, index._unindex)
         self.assertEqual(1, len(index))
@@ -78,7 +70,7 @@ class TestRemoveFromUnIndex(FunctionalTestCase):
         surgery = RemoveFromUnIndex(index, rid)
         surgery.perform()
 
-        entries_pointing_to_rid = unindex_entries_pointing_to_rid(index, rid)
+        entries_pointing_to_rid = find_keys_pointing_to_rid(index, rid)
         self.assertEqual(0, len(entries_pointing_to_rid))
         self.assertNotIn(rid, index._unindex)
         self.assertEqual(0, len(index))
@@ -88,7 +80,7 @@ class TestRemoveFromUnIndex(FunctionalTestCase):
         index = self.catalog.indexes['modified']
         self.assertIs(DateIndex, type(index))
 
-        entries_pointing_to_rid = unindex_entries_pointing_to_rid(index, rid)
+        entries_pointing_to_rid = find_keys_pointing_to_rid(index, rid)
         self.assertEqual(1, len(entries_pointing_to_rid))
         self.assertIn(rid, index._unindex)
         self.assertEqual(1, len(index))
@@ -96,7 +88,7 @@ class TestRemoveFromUnIndex(FunctionalTestCase):
         surgery = RemoveFromUnIndex(index, rid)
         surgery.perform()
 
-        entries_pointing_to_rid = unindex_entries_pointing_to_rid(index, rid)
+        entries_pointing_to_rid = find_keys_pointing_to_rid(index, rid)
         self.assertEqual(0, len(entries_pointing_to_rid))
         self.assertNotIn(rid, index._unindex)
         self.assertEqual(0, len(index))
@@ -111,7 +103,7 @@ class TestRemoveFromUnIndex(FunctionalTestCase):
         index = self.catalog.indexes['start']
         self.assertIs(DateRecurringIndex, type(index))
 
-        entries_pointing_to_rid = unindex_entries_pointing_to_rid(index, rid)
+        entries_pointing_to_rid = find_keys_pointing_to_rid(index, rid)
         self.assertEqual(5, len(entries_pointing_to_rid))
         self.assertIn(rid, index._unindex)
         self.assertEqual(5, len(index))
@@ -119,7 +111,7 @@ class TestRemoveFromUnIndex(FunctionalTestCase):
         surgery = RemoveFromUnIndex(index, rid)
         surgery.perform()
 
-        entries_pointing_to_rid = unindex_entries_pointing_to_rid(index, rid)
+        entries_pointing_to_rid = find_keys_pointing_to_rid(index, rid)
         self.assertEqual(0, len(entries_pointing_to_rid))
         self.assertNotIn(rid, index._unindex)
         self.assertEqual(0, len(index))
@@ -129,7 +121,7 @@ class TestRemoveFromUnIndex(FunctionalTestCase):
         index = self.catalog.indexes['object_provides']
         self.assertIs(KeywordIndex, type(index))
 
-        entries_pointing_to_rid = unindex_entries_pointing_to_rid(index, rid)
+        entries_pointing_to_rid = find_keys_pointing_to_rid(index, rid)
         self.assertGreater(len(entries_pointing_to_rid), 0)
         self.assertIn(rid, index._unindex)
         self.assertGreater(len(index), 0)
@@ -137,7 +129,7 @@ class TestRemoveFromUnIndex(FunctionalTestCase):
         surgery = RemoveFromUnIndex(index, rid)
         surgery.perform()
 
-        entries_pointing_to_rid = unindex_entries_pointing_to_rid(index, rid)
+        entries_pointing_to_rid = find_keys_pointing_to_rid(index, rid)
         self.assertEqual(0, len(entries_pointing_to_rid))
         self.assertNotIn(rid, index._unindex)
         self.assertEqual(0, len(index))
