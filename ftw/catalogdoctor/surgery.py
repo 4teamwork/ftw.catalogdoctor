@@ -12,22 +12,25 @@ from Products.PluginIndexes.UUIDIndex.UUIDIndex import UUIDIndex
 from Products.ZCTextIndex.ZCTextIndex import ZCTextIndex
 
 
-class NullSurgery(object):
-    """Don't do anything."""
+class IndexSurgery(object):
 
     def __init__(self, index, rid):
-        pass
+        self.index = index
+        self.rid = rid
+
+    def perform(self):
+        raise NotImplementedError
+
+
+class NullSurgery(IndexSurgery):
+    """Don't do anything."""
 
     def perform(self):
         pass
 
 
-class RemoveFromUnIndex(object):
+class RemoveFromUnIndex(IndexSurgery):
     """Remove a rid from a simple forward and reverse index."""
-
-    def __init__(self, index, rid):
-        self.index = index
-        self.rid = rid
 
     def perform(self):
         entries_pointing_to_rid = [
@@ -49,6 +52,13 @@ class RemoveFromUnIndex(object):
             del self.index._unindex[self.rid]
 
 
+class UnindexObject(IndexSurgery):
+    """Remove a rid via the official `unindex_object` API."""
+
+    def perform(self):
+        self.index.unindex_object(self.rid)
+
+
 class Surgery(object):
     """Surgery can fix a concrete set of symptoms."""
 
@@ -58,6 +68,7 @@ class Surgery(object):
         FieldIndex: RemoveFromUnIndex,
         GopipIndex: NullSurgery,  # not a real index
         KeywordIndex: RemoveFromUnIndex,
+        ZCTextIndex: UnindexObject,
     }
 
     def __init__(self, catalog, unhealthy_rid):
@@ -75,7 +86,7 @@ class Surgery(object):
                 surgery(idx, rid).perform()
                 continue
 
-            if isinstance(idx, (ZCTextIndex, DateRangeIndex,
+            if isinstance(idx, (DateRangeIndex,
                                 DateRecurringIndex, BooleanIndex)):
                 # These are more complex index types, that we don't handle
                 # on a low level. We have to hope .unindex_object is able
