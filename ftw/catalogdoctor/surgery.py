@@ -62,6 +62,19 @@ class NullSurgery(IndexSurgery):
         pass
 
 
+class RemoveFromUUIDIndex(IndexSurgery):
+    """Remove rid from a `UUIDIndex`."""
+
+    def _remove_keys_pointing_to_rid(self, index):
+        for key in find_keys_pointing_to_rid(index, self.rid):
+            del index[key]
+            self._decrease_length()
+
+    def perform(self):
+        self._remove_keys_pointing_to_rid(self.index._index)
+        self._remove_rid_from_unindex(self.index._unindex)
+
+
 class RemoveFromUnIndex(IndexSurgery):
     """Remove a rid from a simple forward and reverse index."""
 
@@ -126,6 +139,7 @@ class Surgery(object):
         FieldIndex: RemoveFromUnIndex,
         GopipIndex: NullSurgery,  # not a real index
         KeywordIndex: RemoveFromUnIndex,
+        UUIDIndex: RemoveFromUUIDIndex,
         ZCTextIndex: UnindexObject,
     }
 
@@ -144,7 +158,7 @@ class Surgery(object):
                 surgery(idx, rid).perform()
                 continue
 
-            if not isinstance(idx, (ExtendedPathIndex, UUIDIndex)):
+            if not isinstance(idx, (ExtendedPathIndex,)):
                 raise CantPerformSurgery(
                     'Unhandled index type: {0!r}'.format(idx))
 
