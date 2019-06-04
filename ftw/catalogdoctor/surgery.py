@@ -91,6 +91,23 @@ class RemoveFromDateRangeIndex(IndexSurgery):
         pass
 
 
+class RemoveFromBooleanIndex(IndexSurgery):
+    """Remove rid from a `BooleanIndex`.
+
+    Lazily skips checking whether the boolean index should be inverted or not,
+    as this operation is  functionally irrelevant and will happen during the
+    next reindex operation by plone.
+    """
+    def perform(self):
+        if self.rid in self.index._unindex:
+            del self.index._unindex[self.rid]
+            self.index._length.change(-1)
+
+        if self.rid in self.index._index:
+            self.index._index.remove(self.rid)
+            self.index._index_length.change(-1)
+
+
 class UnindexObject(IndexSurgery):
     """Remove a rid via the official `unindex_object` API."""
 
@@ -102,6 +119,7 @@ class Surgery(object):
     """Surgery can fix a concrete set of symptoms."""
 
     removal = {
+        BooleanIndex: RemoveFromBooleanIndex,
         DateIndex: RemoveFromUnIndex,
         DateRangeIndex: RemoveFromDateRangeIndex,
         DateRecurringIndex: RemoveFromUnIndex,
@@ -124,13 +142,6 @@ class Surgery(object):
             surgery = self.removal.get(type(idx))
             if surgery:
                 surgery(idx, rid).perform()
-                continue
-
-            if isinstance(idx, (BooleanIndex,)):
-                # These are more complex index types, that we don't handle
-                # on a low level. We have to hope .unindex_object is able
-                # to uncatalog the object and doesn't raise a KeyError.
-                idx.unindex_object(rid)
                 continue
 
             if not isinstance(idx, (ExtendedPathIndex, UUIDIndex)):
