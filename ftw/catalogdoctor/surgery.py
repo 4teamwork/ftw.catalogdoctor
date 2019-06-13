@@ -269,6 +269,38 @@ class RemoveOrphanedRid(Surgery):
         self.change_catalog_length(-1)
 
 
+class ReindexMissingUUID(Surgery):
+    """Reindex an uuid which is partially missing from the UID index.
+
+    Removing and reindexing the object seems to do the trick in such cases.
+    """
+    def perform(self):
+        rid = self.unhealthy_rid.rid
+
+        if len(self.unhealthy_rid.paths) != 1:
+            raise CantPerformSurgery(
+                "Expected exactly one affected path, got: {}"
+                .format(", ".join(self.unhealthy_rid.paths)))
+
+        path = list(self.unhealthy_rid.paths)[0]
+
+        portal = api.portal.get()
+        obj = portal.unrestrictedTraverse(path, None)
+        if obj is None:
+            raise CantPerformSurgery(
+                "Missing object at {}".format(path))
+
+        # update UID index
+        index = self.catalog.indexes['UID']
+        RemoveFromUUIDIndex(index, rid).perform()
+        index.index_object(rid, obj)
+
+        # make sure catalog metadata is up to date as well
+        self.catalog.updateMetadata(obj, path, rid)
+
+        self.surgery_log.append("Reindexed UID index and updated metadata.")
+
+
 class CatalogDoctor(object):
     """Performs surgery for an unhealthy_rid, if possible.
 
@@ -291,6 +323,10 @@ class CatalogDoctor(object):
             'in_uuid_unindex_not_in_catalog',
             'in_uuid_unindex_not_in_uuid_index',
         ): RemoveOrphanedRid,
+        (
+            'in_catalog_not_in_uuid_index',
+            'in_uuid_unindex_not_in_uuid_index',
+        ): ReindexMissingUUID,
     }
 
     def __init__(self, catalog, unhealthy_rid):
