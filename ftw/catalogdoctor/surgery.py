@@ -19,11 +19,13 @@ class IndexSurgery(object):
         self.index = index
         self.rid = rid
 
-    def _remove_keys_pointing_to_rid(self, index):
+    def _remove_keys_pointing_to_rid(self, index, linked_length=None):
         """Remove all entries pointing to rid from a forward index.
 
         Rows in indices are expected to be a set, e.g. a `TreeSet`. Once the
         set is emtpy it should also be removed from the index.
+
+        If `linked_length` is provided it is decreased when a row is removed.
 
         """
         for key in find_keys_pointing_to_rid(index, self.rid):
@@ -31,25 +33,14 @@ class IndexSurgery(object):
             row.remove(self.rid)
             if not row:
                 del index[key]
-                # The method removeForwardIndexEntry from UnIndex updates the
-                # index length. We assume we only have to update the index
-                # length when we remove the entry from the forward index,
-                # assuming somehow removeForwardIndexEntry has not been called
-                # or raised an exception
-                self._decrease_length()
+                if linked_length:
+                    linked_length.change(-1)
 
     def _remove_rid_from_unindex(self, unindex):
         """Remove rid from a reverse index."""
 
         if self.rid in unindex:
             del unindex[self.rid]
-
-    def _decrease_length(self):
-        """Call this when the index length should be decreased.
-
-        Usually when there is one forward index and the forward index changes.
-        """
-        self.index._length.change(-1)
 
     def perform(self):
         raise NotImplementedError
@@ -65,10 +56,10 @@ class NullSurgery(IndexSurgery):
 class RemoveFromUUIDIndex(IndexSurgery):
     """Remove rid from a `UUIDIndex`."""
 
-    def _remove_keys_pointing_to_rid(self, index):
+    def _remove_keys_pointing_to_rid(self, index, linked_length=None):
         for key in find_keys_pointing_to_rid(index, self.rid):
             del index[key]
-            self._decrease_length()
+            self.index._length.change(-1)
 
     def perform(self):
         self._remove_keys_pointing_to_rid(self.index._index)
@@ -79,7 +70,8 @@ class RemoveFromUnIndex(IndexSurgery):
     """Remove a rid from a simple forward and reverse index."""
 
     def perform(self):
-        self._remove_keys_pointing_to_rid(self.index._index)
+        self._remove_keys_pointing_to_rid(
+            self.index._index, linked_length=self.index._length)
         self._remove_rid_from_unindex(self.index._unindex)
 
 
@@ -98,10 +90,6 @@ class RemoveFromDateRangeIndex(IndexSurgery):
             self._remove_keys_pointing_to_rid(index)
 
         self._remove_rid_from_unindex(self.index._unindex)
-
-    def _decrease_length(self):
-        """A `DateRangeIndex` seems to have a constant length of 0."""
-        pass
 
 
 class RemoveFromBooleanIndex(IndexSurgery):
