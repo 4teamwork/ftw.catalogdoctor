@@ -109,6 +109,37 @@ class RemoveFromBooleanIndex(IndexSurgery):
             self.index._index_length.change(-1)
 
 
+class RemoveFromExtendedPathIndex(IndexSurgery):
+    """Remove rid from a `ExtendedPathIndex`."""
+
+    def perform(self):
+        # _index
+        components_with_rid = []
+        for component, level_to_rid in self.index._index.items():
+            for level, rids in level_to_rid.items():
+                if self.rid in rids:
+                    components_with_rid.append((component, level,))
+
+        for component, level in components_with_rid:
+            self.index._index[component][level].remove(self.rid)
+            if not self.index._index[component][level]:
+                del self.index._index[component][level]
+            if not self.index._index[component]:
+                del self.index._index[component]
+
+        # _index_items
+        for key in find_keys_pointing_to_rid(self.index._index_items, self.rid):
+            del self.index._index_items[key]
+
+        # _index_parents
+        self._remove_keys_pointing_to_rid(self.index._index_parents)
+
+        # _unindex
+        if self.rid in self.index._unindex:
+            del self.index._unindex[self.rid]
+            self.index._length.change(-1)
+
+
 class UnindexObject(IndexSurgery):
     """Remove a rid via the official `unindex_object` API."""
 
@@ -124,6 +155,7 @@ class Surgery(object):
         DateIndex: RemoveFromUnIndex,
         DateRangeIndex: RemoveFromDateRangeIndex,
         DateRecurringIndex: RemoveFromUnIndex,
+        ExtendedPathIndex: RemoveFromExtendedPathIndex,
         FieldIndex: RemoveFromUnIndex,
         GopipIndex: NullSurgery,  # not a real index
         KeywordIndex: RemoveFromUnIndex,
@@ -142,38 +174,12 @@ class Surgery(object):
     def unindex_rid_from_all_catalog_indexes(self, rid):
         for idx in self.catalog.indexes.values():
             surgery = self.removal.get(type(idx))
-            if surgery:
-                surgery(idx, rid).perform()
-                continue
 
-            if not isinstance(idx, (ExtendedPathIndex,)):
+            if not surgery:
                 raise CantPerformSurgery(
                     'Unhandled index type: {0!r}'.format(idx))
 
-            removed_from_forward_index = False
-            entries_pointing_to_rid = [
-                val for val, rid_in_index in idx._index.items()
-                if rid_in_index == rid]
-            if entries_pointing_to_rid:
-                # Not quite sure yet if this actually *can* happen
-                if len(entries_pointing_to_rid) != 1:
-                    raise CantPerformSurgery(
-                        'Multiple entries pointing to rid: {}'.format(
-                        ' '.join(entries_pointing_to_rid)))
-                entry = entries_pointing_to_rid[0]
-                del idx._index[entry]
-                removed_from_forward_index = True
-
-            if rid in idx._unindex:
-                del idx._unindex[rid]
-
-            # The method removeForwardIndexEntry from UnIndex updates the
-            # index length. We assume we only have to update the index length
-            # when we remove the entry from the forward index, assuming somehow
-            # removeForwardIndexEntry has not been called or raised an
-            # exception
-            if removed_from_forward_index:
-                idx._length.change(-1)
+            surgery(idx, rid).perform()
 
         self.surgery_log.append(
             "Removed rid from all catalog indexes.")
