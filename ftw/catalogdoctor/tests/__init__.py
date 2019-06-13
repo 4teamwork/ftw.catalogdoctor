@@ -27,6 +27,7 @@ class FunctionalTestCase(TestCase):
         self._chosen_rids = set()
 
     def run_healthcheck(self):
+        self.maybe_process_indexing_queue()  # enforce up to date catalog
         healthcheck = CatalogHealthCheck(self.portal_catalog)
         return healthcheck.run()
 
