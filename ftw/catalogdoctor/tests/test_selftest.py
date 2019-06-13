@@ -242,3 +242,26 @@ class TestSelftest(FunctionalTestCase):
                 'in_uuid_unindex_not_in_uuid_index',
             ),
             result.get_symptoms(orphaned_rid))
+
+    def test_make_missing_uuid_forward_index_entry(self):
+        self.make_missing_uuid_forward_index_entry(self.parent)
+
+        result = self.run_healthcheck()
+        self.assertFalse(result.is_healthy())
+        self.assertEqual(1, len(result.unhealthy_rids))
+        rid = result.get_unhealthy_rids()[0].rid
+
+        self.assertTrue(rid in self.catalog.paths)
+        self.assertTrue(rid in self.catalog.uids.values())
+
+        uuid_index = self.catalog.indexes['UID']
+        self.assertTrue(rid in uuid_index._unindex)
+        self.assertFalse(rid in uuid_index._index.values())
+        self.assertEqual(1, uuid_index._length())
+
+        self.assertEqual(
+            (
+                'in_catalog_not_in_uuid_index',
+                'in_uuid_unindex_not_in_uuid_index',
+            ),
+            result.get_symptoms(rid))

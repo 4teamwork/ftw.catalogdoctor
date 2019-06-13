@@ -179,3 +179,20 @@ class FunctionalTestCase(TestCase):
 
         self.maybe_process_indexing_queue()
         return ob
+
+    def make_missing_uuid_forward_index_entry(self, obj):
+        """Make catalog unhealthy by dropping an item from the forward index.
+
+
+        :param obj: the object for which the UUIDIndex will be set into an
+                    inconsistent state.
+
+        """
+        rid = self.get_rid(obj)
+
+        uuid_index = self.catalog.indexes['UID']
+        uuid = uuid_index._unindex[rid]
+        del uuid_index._index[uuid]
+        uuid_index._length.change(-1)
+
+        return obj
