@@ -196,3 +196,13 @@ class FunctionalTestCase(TestCase):
         uuid_index._length.change(-1)
 
         return obj
+
+    def drop_from_catalog_indexes(self, obj):
+        """Make catalog unhealthy by dropping `obj` from all indexes."""
+
+        rid = self.get_rid(obj)
+
+        for index in self.catalog.indexes.values():
+            index.unindex_object(rid)
+
+        return obj
