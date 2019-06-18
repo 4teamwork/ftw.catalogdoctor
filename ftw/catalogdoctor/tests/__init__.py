@@ -1,4 +1,6 @@
 from Acquisition import aq_base
+from Acquisition import aq_inner
+from Acquisition import aq_parent
 from ftw.catalogdoctor.command import doctor_cmd
 from ftw.catalogdoctor.compat import processQueue
 from ftw.catalogdoctor.healthcheck import CatalogHealthCheck
@@ -175,10 +177,19 @@ class FunctionalTestCase(TestCase):
 
         """
         ob = self.make_unhealthy_extra_rid_after_move(obj)
-        ob.aq_parent.manage_delObjects([ob.getId()])
+        self.delete_object(ob)
 
         self.maybe_process_indexing_queue()
         return ob
+
+    def delete_object(self, obj):
+        aq_parent(aq_inner(obj)).manage_delObjects([obj.getId()])
+
+    def delete_object_silenty(self, obj):
+        """Silently delete the object without firing any reindexing events."""
+
+        parent = aq_parent(aq_inner(obj))
+        parent._delObject(obj.getId(), suppress_events=True)
 
     def make_missing_uuid_forward_index_entry(self, obj):
         """Make catalog unhealthy by dropping an item from the forward index.

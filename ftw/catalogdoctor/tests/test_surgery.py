@@ -3,6 +3,7 @@ from ftw.builder import create
 from ftw.catalogdoctor.surgery import ReindexMissingUUID
 from ftw.catalogdoctor.surgery import RemoveExtraRid
 from ftw.catalogdoctor.surgery import RemoveOrphanedRid
+from ftw.catalogdoctor.surgery import RemoveRidOrReindexObject
 from ftw.catalogdoctor.tests import FunctionalTestCase
 
 
@@ -83,6 +84,82 @@ class TestSurgery(FunctionalTestCase):
 
         surgery = ReindexMissingUUID(self.catalog, unhealthy_rid)
         surgery.perform()
+
+        result = self.run_healthcheck()
+        self.assertTrue(result.is_healthy())
+
+    def test_surgery_add_dropped_object_to_indices(self):
+        self.drop_from_catalog_indexes(self.parent)
+
+        result = self.run_healthcheck()
+        self.assertFalse(result.is_healthy())
+        unhealthy_rid = result.get_unhealthy_rids()[0]
+        self.assertEqual(
+            (
+                'in_catalog_not_in_uuid_index',
+                'in_catalog_not_in_uuid_unindex',
+            ),
+            result.get_symptoms(unhealthy_rid.rid))
+
+        surgery = RemoveRidOrReindexObject(self.catalog, unhealthy_rid)
+        surgery.perform()
+
+        result = self.run_healthcheck()
+        self.assertTrue(result.is_healthy())
+
+        self.assertDictContainsSubset(
+            {'Creator': 'test_user_1_',
+             'Description': [],
+             'SearchableText': ['parent', 'parent'],
+             'Subject': '',
+             'Title': ['parent'],
+             'Type': u'Folder',
+             'allowedRolesAndUsers': ['Anonymous'],
+             'cmf_uid': '',
+             'commentators': '',
+             'effectiveRange': (-1560, None),
+             'getId': 'parent',
+             'getObjPositionInParent': [],
+             'getRawRelatedItems': '',
+             'id': 'parent',
+             'in_reply_to': '',
+             'is_default_page': 0,
+             'is_folderish': 1,
+             'meta_type': 'Dexterity Container',
+             'path': '/plone/parent',
+             'portal_type': 'Folder',
+             'review_state': '',
+             'sortable_title': 'parent',
+             'start': '',
+             'sync_uid': '',
+             'total_comments': 0},
+            self.get_catalog_indexdata(self.parent))
+
+    def test_surgery_remove_untraversable_object_from_catalog(self):
+        rid = self.get_rid(self.child)
+        self.drop_from_catalog_indexes(self.child)
+        self.delete_object_silenty(self.child)
+
+        self.assertEqual(2, len(self.catalog))
+        self.assertIn(rid, self.catalog.paths)
+        self.assertIn(rid, self.catalog.data)
+
+        result = self.run_healthcheck()
+        self.assertFalse(result.is_healthy())
+        unhealthy_rid = result.get_unhealthy_rids()[0]
+        self.assertEqual(
+            (
+                'in_catalog_not_in_uuid_index',
+                'in_catalog_not_in_uuid_unindex',
+            ),
+            unhealthy_rid.catalog_symptoms)
+
+        surgery = RemoveRidOrReindexObject(self.catalog, unhealthy_rid)
+        surgery.perform()
+
+        self.assertEqual(1, len(self.catalog))
+        self.assertNotIn(rid, self.catalog.paths)
+        self.assertNotIn(rid, self.catalog.data)
 
         result = self.run_healthcheck()
         self.assertTrue(result.is_healthy())

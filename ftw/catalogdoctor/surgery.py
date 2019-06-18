@@ -196,6 +196,12 @@ class Surgery(object):
         self.surgery_log.append(
             "Removed rid from catalog metadata.")
 
+    def delete_path_from_uids(self, path):
+        del self.catalog.uids[path]
+
+        self.surgery_log.append(
+            "Removed path from uids (the path->rid mapping).")
+
     def change_catalog_length(self, delta):
         self.catalog._length.change(delta)
 
@@ -301,6 +307,55 @@ class ReindexMissingUUID(Surgery):
         self.surgery_log.append("Reindexed UID index and updated metadata.")
 
 
+class RemoveRidOrReindexObject(Surgery):
+    """Reindex an object for all indexes or remove the stray rid.
+
+    This can have two causes:
+    - Either there are stray rids left behind in the catalogs `uid` and `path`
+      mappings. In such cases the object is no longer traversable as plone
+      content and we can remove the stray rid.
+    - The object has not been indexed correctly, in such cases the object can
+      be traversed and has to be reindexed in all indexes.
+
+    """
+    def perform(self):
+        rid = self.unhealthy_rid.rid
+
+        if rid not in self.catalog.data:
+            raise CantPerformSurgery(
+                "Expected rid to be present in catalog metadata {}"
+                .format(rid))
+
+        if len(self.unhealthy_rid.paths) != 1:
+            raise CantPerformSurgery(
+                "Expected exactly one affected path, got: {}"
+                .format(", ".join(self.unhealthy_rid.paths)))
+
+        if rid not in self.catalog.paths:
+            raise CantPerformSurgery(
+                "Expected rid to be present in catalog paths {}"
+                .format(rid))
+
+        path = list(self.unhealthy_rid.paths)[0]
+        if path not in self.catalog.uids:
+            raise CantPerformSurgery(
+                "Expected path to be present in catalog uids {}"
+                .format(path))
+
+        portal = api.portal.get()
+        obj = portal.unrestrictedTraverse(path, None)
+
+        if obj is not None:
+            obj.reindexObject()
+        else:
+            self.unindex_rid_from_all_catalog_indexes(rid)
+            self.delete_rid_from_paths(rid)
+            self.delete_rid_from_metadata(rid)
+            self.delete_path_from_uids(path)
+            self.change_catalog_length(-1)
+
+
+
 class CatalogDoctor(object):
     """Performs surgery for an unhealthy_rid, if possible.
 
@@ -327,6 +382,10 @@ class CatalogDoctor(object):
             'in_catalog_not_in_uuid_index',
             'in_uuid_unindex_not_in_uuid_index',
         ): ReindexMissingUUID,
+        (
+            'in_catalog_not_in_uuid_index',
+            'in_catalog_not_in_uuid_unindex',
+        ): RemoveRidOrReindexObject,
     }
 
     def __init__(self, catalog, unhealthy_rid):
