@@ -66,7 +66,31 @@ class TestSurgery(FunctionalTestCase):
         result = self.run_healthcheck()
         self.assertTrue(result.is_healthy())
 
-    def test_surgery_remove_orphaned_rid(self):
+    def test_surgery_remove_orphaned_rid_not_in_indexes(self):
+        path = '/'.join(self.child.getPhysicalPath())
+        self.drop_object_from_catalog_indexes(self.child)
+        self.delete_object_silenty(self.child)
+        del self.catalog.uids[path]
+
+        result = self.run_healthcheck()
+        self.assertFalse(result.is_healthy())
+        unhealthy_rid = result.get_unhealthy_rids()[0]
+
+        self.assertEqual(
+            (
+                'in_metadata_keys_not_in_uids_values',
+                'in_paths_keys_not_in_uids_values',
+                'in_paths_values_not_in_uids_keys',
+            ),
+            result.get_symptoms(unhealthy_rid.rid))
+
+        surgery = RemoveOrphanedRid(self.catalog, unhealthy_rid)
+        surgery.perform()
+
+        result = self.run_healthcheck()
+        self.assertTrue(result.is_healthy())
+
+    def test_surgery_remove_orphaned_rid_in_indexes(self):
         self.make_orphaned_rid(self.child)
 
         result = self.run_healthcheck()
