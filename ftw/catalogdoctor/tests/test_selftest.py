@@ -266,9 +266,9 @@ class TestSelftest(FunctionalTestCase):
             ),
             result.get_symptoms(rid))
 
-    def test_drop_from_catalog_indexes(self):
+    def test_drop_object_from_catalog_indexes(self):
         rid = self.get_rid(self.child)
-        self.drop_from_catalog_indexes(self.child)
+        self.drop_object_from_catalog_indexes(self.child)
 
         result = self.run_healthcheck()
         self.assertFalse(result.is_healthy())

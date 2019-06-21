@@ -182,6 +182,20 @@ class FunctionalTestCase(TestCase):
         self.maybe_process_indexing_queue()
         return ob
 
+    def recatalog_object_with_new_rid(self, obj):
+        """Make catalog unhealthy by recataloging an object with a new rid.
+
+        This will leave the old rid behind in catalog metadata and in the
+        rid->path mapping but remove it from all indexes.
+
+        """
+        self.drop_object_from_catalog_indexes(obj)
+
+        path = '/'.join(obj.getPhysicalPath())
+        del self.catalog.uids[path]
+
+        self.catalog.catalogObject(obj, path)
+
     def delete_object(self, obj):
         aq_parent(aq_inner(obj)).manage_delObjects([obj.getId()])
 
@@ -208,12 +222,13 @@ class FunctionalTestCase(TestCase):
 
         return obj
 
-    def drop_from_catalog_indexes(self, obj):
+    def drop_object_from_catalog_indexes(self, obj):
         """Make catalog unhealthy by dropping `obj` from all indexes."""
 
-        rid = self.get_rid(obj)
+        self.drop_rid_from_catalog_indexes(self.get_rid(obj))
+
+    def drop_rid_from_catalog_indexes(self, rid):
+        """Make catalog unhealthy by dropping `rid` from all indexes."""
 
         for index in self.catalog.indexes.values():
             index.unindex_object(rid)
-
-        return obj

@@ -22,7 +22,7 @@ class TestSurgery(FunctionalTestCase):
                             .within(self.parent)
                             .titled(u'child'))
 
-    def test_surgery_remove_extra_rid(self):
+    def test_surgery_remove_extra_rid_with_partial_uuid(self):
         self.make_unhealthy_extra_rid_after_move(self.child)
 
         result = self.run_healthcheck()
@@ -38,6 +38,27 @@ class TestSurgery(FunctionalTestCase):
                 'uids_tuple_mismatches_paths_tuple',
             ),
             result.get_symptoms(unhealthy_rid.rid))
+
+        surgery = RemoveExtraRid(self.catalog, unhealthy_rid)
+        surgery.perform()
+
+        result = self.run_healthcheck()
+        self.assertTrue(result.is_healthy())
+
+    def test_surgery_remove_extra_rid_without_partial_uuid(self):
+        self.recatalog_object_with_new_rid(self.child)
+
+        result = self.run_healthcheck()
+        self.assertFalse(result.is_healthy())
+        unhealthy_rid = result.get_unhealthy_rids()[0]
+
+        self.assertEqual(
+            (
+                'in_metadata_keys_not_in_uids_values',
+                'in_paths_keys_not_in_uids_values',
+                'uids_tuple_mismatches_paths_tuple',
+            ),
+            unhealthy_rid.catalog_symptoms)
 
         surgery = RemoveExtraRid(self.catalog, unhealthy_rid)
         surgery.perform()
@@ -89,7 +110,7 @@ class TestSurgery(FunctionalTestCase):
         self.assertTrue(result.is_healthy())
 
     def test_surgery_add_dropped_object_to_indices(self):
-        self.drop_from_catalog_indexes(self.parent)
+        self.drop_object_from_catalog_indexes(self.parent)
 
         result = self.run_healthcheck()
         self.assertFalse(result.is_healthy())
@@ -137,7 +158,7 @@ class TestSurgery(FunctionalTestCase):
 
     def test_surgery_remove_untraversable_object_from_catalog(self):
         rid = self.get_rid(self.child)
-        self.drop_from_catalog_indexes(self.child)
+        self.drop_object_from_catalog_indexes(self.child)
         self.delete_object_silenty(self.child)
 
         self.assertEqual(2, len(self.catalog))

@@ -355,7 +355,6 @@ class RemoveRidOrReindexObject(Surgery):
             self.change_catalog_length(-1)
 
 
-
 class CatalogDoctor(object):
     """Performs surgery for an unhealthy_rid, if possible.
 
@@ -369,6 +368,11 @@ class CatalogDoctor(object):
             'in_paths_keys_not_in_uids_values',
             'in_uuid_unindex_not_in_catalog',
             'in_uuid_unindex_not_in_uuid_index',
+            'uids_tuple_mismatches_paths_tuple',
+        ): RemoveExtraRid,
+        (
+            'in_metadata_keys_not_in_uids_values',
+            'in_paths_keys_not_in_uids_values',
             'uids_tuple_mismatches_paths_tuple',
         ): RemoveExtraRid,
         (
