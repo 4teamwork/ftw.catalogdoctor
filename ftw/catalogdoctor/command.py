@@ -1,4 +1,5 @@
 from __future__ import print_function
+from ftw.catalogdoctor.compat import processQueue
 from ftw.catalogdoctor.healthcheck import CatalogHealthCheck
 from ftw.catalogdoctor.surgery import CatalogDoctor
 from Products.CMFCore.utils import getToolByName
@@ -81,6 +82,8 @@ def surgery_command(portal_catalog, args, formatter):
         for unhealthy_rid in there_is_nothing_we_can_do:
             unhealthy_rid.write_result(formatter)
             formatter.info('')
+
+    processQueue()
 
     formatter.info('Performing post-surgery healthcheck:')
     post_result = healthcheck_command(portal_catalog, args, formatter)
