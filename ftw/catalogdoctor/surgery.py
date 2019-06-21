@@ -3,6 +3,7 @@ from ftw.catalogdoctor.exceptions import CantPerformSurgery
 from ftw.catalogdoctor.utils import find_keys_pointing_to_rid
 from plone import api
 from plone.app.folder.nogopip import GopipIndex
+from plone.app.redirector.interfaces import IRedirectionStorage
 from Products.ExtendedPathIndex.ExtendedPathIndex import ExtendedPathIndex
 from Products.PluginIndexes.BooleanIndex.BooleanIndex import BooleanIndex
 from Products.PluginIndexes.DateIndex.DateIndex import DateIndex
@@ -11,6 +12,7 @@ from Products.PluginIndexes.FieldIndex.FieldIndex import FieldIndex
 from Products.PluginIndexes.KeywordIndex.KeywordIndex import KeywordIndex
 from Products.PluginIndexes.UUIDIndex.UUIDIndex import UUIDIndex
 from Products.ZCTextIndex.ZCTextIndex import ZCTextIndex
+from zope.component import queryUtility
 
 
 class IndexSurgery(object):
@@ -310,10 +312,12 @@ class ReindexMissingUUID(Surgery):
 class RemoveRidOrReindexObject(Surgery):
     """Reindex an object for all indexes or remove the stray rid.
 
-    This can have two causes:
+    This can have three causes:
     - Either there are stray rids left behind in the catalogs `uid` and `path`
       mappings. In such cases the object is no longer traversable as plone
       content and we can remove the stray rid.
+    - The object has been moved, but somehow `uid` and `path` mappings have
+      not been updated correctly. We can remove the stray rid.
     - The object has not been indexed correctly, in such cases the object can
       be traversed and has to be reindexed in all indexes.
 
@@ -345,14 +349,41 @@ class RemoveRidOrReindexObject(Surgery):
         portal = api.portal.get()
         obj = portal.unrestrictedTraverse(path, None)
 
-        if obj is not None:
-            obj.reindexObject()
-        else:
+        # the object is gone
+        if obj is None:
             self.unindex_rid_from_all_catalog_indexes(rid)
             self.delete_rid_from_paths(rid)
             self.delete_rid_from_metadata(rid)
             self.delete_path_from_uids(path)
             self.change_catalog_length(-1)
+
+            return
+
+        # this happens when the object has been moved but the old path has not
+        # been correctly removed from the catalog. we expect a redirect in such
+        # cases, also the path of the object we traversed to will be different
+        # from the path we input to `unrestrictedTraverse`
+        obj_path = '/'.join(obj.getPhysicalPath())
+        if obj_path != path:
+            storage = queryUtility(IRedirectionStorage)
+            if storage.get(path) != obj_path:
+                raise CantPerformSurgery(
+                    "Object path after traversing {} differs from path before "
+                    "traversing and in catalog {}, but no redirect is "
+                    "registered.".format(obj_path, path))
+
+            self.unindex_rid_from_all_catalog_indexes(rid)
+            self.delete_rid_from_paths(rid)
+            self.delete_rid_from_metadata(rid)
+            self.delete_path_from_uids(path)
+            self.change_catalog_length(-1)
+
+            return
+
+        # the object is still there and somehow vanished from the indexes.
+        # we reindex to update indexes and metadata.
+        obj.reindexObject()
+        self.surgery_log.append("Reindexed object.")
 
 
 class CatalogDoctor(object):
