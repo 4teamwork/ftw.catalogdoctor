@@ -1,5 +1,6 @@
 from ftw.builder import Builder
 from ftw.builder import create
+from ftw.catalogdoctor.exceptions import CantPerformSurgery
 from ftw.catalogdoctor.surgery import ReindexMissingUUID
 from ftw.catalogdoctor.surgery import RemoveExtraRid
 from ftw.catalogdoctor.surgery import RemoveOrphanedRid
@@ -128,6 +129,66 @@ class TestSurgery(FunctionalTestCase):
             result.get_symptoms(unhealthy_rid.rid))
 
         surgery = ReindexMissingUUID(self.catalog, unhealthy_rid)
+        surgery.perform()
+
+        result = self.run_healthcheck()
+        self.assertTrue(result.is_healthy())
+
+    def test_surgery_remove_object_moved_into_parent_and_found_via_acquisition_abort(self):
+        self.parent['qux'] = self.child
+        broken_path = '/'.join(self.child.getPhysicalPath()[:-1] + ('qux',))
+
+        rid = self.choose_next_rid()
+        self.catalog.uids[broken_path] = rid
+        self.catalog.paths[rid] = broken_path
+        self.catalog.data[rid] = {}
+        self.catalog._length.change(1)
+
+        result = self.run_healthcheck()
+        self.assertFalse(result.is_healthy())
+        unhealthy_rid = result.get_unhealthy_rids()[0]
+        self.assertEqual(rid, unhealthy_rid.rid)
+        self.assertEqual(
+            (
+                'in_catalog_not_in_uuid_index',
+                'in_catalog_not_in_uuid_unindex',
+            ),
+            result.get_symptoms(unhealthy_rid.rid))
+
+        surgery = RemoveRidOrReindexObject(self.catalog, unhealthy_rid)
+        with self.assertRaises(CantPerformSurgery):
+            surgery.perform()
+
+    def test_surgery_remove_object_moved_into_parent_and_found_via_acquisition(self):
+        grandchild = create(Builder('folder')
+                            .within(self.child)
+                            .titled(u'nastygrandchild'))
+
+        old_grandchild_path = '/'.join(grandchild.getPhysicalPath())
+        # move object into parent's parent
+        self.parent.manage_pasteObjects(
+            self.child.manage_cutObjects(grandchild.getId()),
+        )
+
+        # re-register old grandchild path with different rid
+        rid = self.choose_next_rid()
+        self.catalog.uids[old_grandchild_path] = rid
+        self.catalog.paths[rid] = old_grandchild_path
+        self.catalog.data[rid] = {}
+        self.catalog._length.change(1)
+
+        result = self.run_healthcheck()
+        self.assertFalse(result.is_healthy())
+        unhealthy_rid = result.get_unhealthy_rids()[0]
+        self.assertEqual(rid, unhealthy_rid.rid)
+        self.assertEqual(
+            (
+                'in_catalog_not_in_uuid_index',
+                'in_catalog_not_in_uuid_unindex',
+            ),
+            result.get_symptoms(unhealthy_rid.rid))
+
+        surgery = RemoveRidOrReindexObject(self.catalog, unhealthy_rid)
         surgery.perform()
 
         result = self.run_healthcheck()

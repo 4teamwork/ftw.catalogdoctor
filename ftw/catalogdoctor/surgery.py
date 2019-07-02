@@ -1,9 +1,10 @@
+from Acquisition import aq_chain
+from Acquisition import aq_inner
 from ftw.catalogdoctor.compat import DateRecurringIndex
 from ftw.catalogdoctor.exceptions import CantPerformSurgery
 from ftw.catalogdoctor.utils import find_keys_pointing_to_rid
 from plone import api
 from plone.app.folder.nogopip import GopipIndex
-from plone.app.redirector.interfaces import IRedirectionStorage
 from Products.ExtendedPathIndex.ExtendedPathIndex import ExtendedPathIndex
 from Products.PluginIndexes.BooleanIndex.BooleanIndex import BooleanIndex
 from Products.PluginIndexes.DateIndex.DateIndex import DateIndex
@@ -12,7 +13,6 @@ from Products.PluginIndexes.FieldIndex.FieldIndex import FieldIndex
 from Products.PluginIndexes.KeywordIndex.KeywordIndex import KeywordIndex
 from Products.PluginIndexes.UUIDIndex.UUIDIndex import UUIDIndex
 from Products.ZCTextIndex.ZCTextIndex import ZCTextIndex
-from zope.component import queryUtility
 
 
 class IndexSurgery(object):
@@ -312,12 +312,13 @@ class ReindexMissingUUID(Surgery):
 class RemoveRidOrReindexObject(Surgery):
     """Reindex an object for all indexes or remove the stray rid.
 
-    This can have three causes:
-    - Either there are stray rids left behind in the catalogs `uid` and `path`
-      mappings. In such cases the object is no longer traversable as plone
-      content and we can remove the stray rid.
-    - The object has been moved, but somehow `uid` and `path` mappings have
-      not been updated correctly. We can remove the stray rid.
+    This can have two causes:
+    - Either there are orphaned rids left behind in the catalogs `uid` and
+      `path` mappings. In such cases the referenced object is is no longer
+      traversable as plone content and we can remove the orphaned rid.
+    - Special case of above when the object has been moved into its parents. In
+      such cases the object can still be traversed as object is found via
+      acquisition. We can remove the orphaned rid in such cases.
     - The object has not been indexed correctly, in such cases the object can
       be traversed and has to be reindexed in all indexes.
 
@@ -359,18 +360,16 @@ class RemoveRidOrReindexObject(Surgery):
 
             return
 
-        # this happens when the object has been moved but the old path has not
-        # been correctly removed from the catalog. we expect a redirect in such
-        # cases, also the path of the object we traversed to will be different
-        # from the path we input to `unrestrictedTraverse`
+        # special case when the object has been moved into one of its parents.
+        # it can be traversed as it is found via acquisition. safeguard so we
+        # only unindex objects where this special case is true.
         obj_path = '/'.join(obj.getPhysicalPath())
         if obj_path != path:
-            storage = queryUtility(IRedirectionStorage)
-            if storage.get(path) != obj_path:
+            if aq_chain(aq_inner(obj))[1:] == aq_chain(obj)[1:]:
                 raise CantPerformSurgery(
                     "Object path after traversing {} differs from path before "
-                    "traversing and in catalog {}, but no redirect is "
-                    "registered.".format(obj_path, path))
+                    "traversing and in catalog {}, but acquisition chain "
+                    "is unexpectedly equal.".format(obj_path, path))
 
             self.unindex_rid_from_all_catalog_indexes(rid)
             self.delete_rid_from_paths(rid)
