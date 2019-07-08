@@ -7,8 +7,10 @@ tests_require = [
     'ftw.builder',
     'ftw.testbrowser',
     'ftw.testing',
+    'plone.app.contenttypes',
     'plone.app.testing',
     'plone.testing',
+    'zope.configuration',
 ]
 
 extras_require = {
@@ -28,6 +30,7 @@ setup(
     classifiers=[
         'Framework :: Plone',
         'Framework :: Plone :: 4.3',
+        'Framework :: Plone :: 5.1',
         'License :: OSI Approved :: GNU General Public License (GPL)',
         'Programming Language :: Python',
         'Programming Language :: Python :: 2.7',
@@ -59,5 +62,8 @@ setup(
     # -*- Entry points: -*-
     [z3c.autoinclude.plugin]
     target = plone
+
+    [zopectl.command]
+    doctor = ftw.catalogdoctor.command:doctor_cmd
     """,
 )
