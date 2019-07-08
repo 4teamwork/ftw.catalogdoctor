@@ -22,7 +22,7 @@ It can be run as follows:
 
 .. code:: sh
 
-    $ bin/instance doctor healtcheck
+    $ bin/instance doctor healthcheck
 
 
 Surgery
