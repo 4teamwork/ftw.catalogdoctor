@@ -83,6 +83,9 @@ def surgery_command(portal_catalog, args, formatter):
             unhealthy_rid.write_result(formatter)
             formatter.info('')
 
+        formatter.info('Not all health problems could be fixed, aborting.')
+        return
+
     processQueue()
 
     formatter.info('Performing post-surgery healthcheck:')

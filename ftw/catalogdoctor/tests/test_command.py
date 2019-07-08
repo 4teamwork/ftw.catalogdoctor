@@ -78,21 +78,6 @@ class TestDoctorCommand(FunctionalTestCase):
             '\t- in_metadata_keys_not_in_paths_keys',
             '\t- in_metadata_keys_not_in_uids_values',
             '',
-            'Performing post-surgery healthcheck:',
-            'Catalog health check report:',
-            'Inconsistent catalog length:',
-            ' claimed length: 1',
-            ' uids length: 1',
-            ' paths length: 1',
-            ' metadata length: 2',
-            ' uid index claimed length: 1',
-            ' uid index index length: 1',
-            ' uid index unindex length: 1',
-            'Catalog data is unhealthy, found 1 unhealthy rids:',
-            'rid {} (--no path--):'.format(extra_rid),
-            '\t- in_metadata_keys_not_in_paths_keys',
-            '\t- in_metadata_keys_not_in_uids_values',
-            '',
             'Not all health problems could be fixed, aborting.'
         ]
         self.assertEqual(expected, self.run_command('doctor', 'surgery'))
