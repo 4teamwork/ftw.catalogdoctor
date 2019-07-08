@@ -1,6 +1,7 @@
 from ftw.builder import Builder
 from ftw.builder import create
 from ftw.catalogdoctor.exceptions import CantPerformSurgery
+from ftw.catalogdoctor.surgery import CatalogDoctor
 from ftw.catalogdoctor.surgery import ReindexMissingUUID
 from ftw.catalogdoctor.surgery import RemoveExtraRid
 from ftw.catalogdoctor.surgery import RemoveOrphanedRid
@@ -28,6 +29,7 @@ class TestSurgery(FunctionalTestCase):
 
         result = self.run_healthcheck()
         self.assertFalse(result.is_healthy())
+        self.assertEqual(1, len(result.get_unhealthy_rids()))
         unhealthy_rid = result.get_unhealthy_rids()[0]
 
         self.assertEqual(
@@ -40,8 +42,9 @@ class TestSurgery(FunctionalTestCase):
             ),
             result.get_symptoms(unhealthy_rid.rid))
 
-        surgery = RemoveExtraRid(self.catalog, unhealthy_rid)
-        surgery.perform()
+        doctor = CatalogDoctor(self.catalog, unhealthy_rid)
+        self.assertIs(RemoveExtraRid, doctor.get_surgery())
+        doctor.perform_surgery()
 
         result = self.run_healthcheck()
         self.assertTrue(result.is_healthy())
@@ -51,6 +54,7 @@ class TestSurgery(FunctionalTestCase):
 
         result = self.run_healthcheck()
         self.assertFalse(result.is_healthy())
+        self.assertEqual(1, len(result.get_unhealthy_rids()))
         unhealthy_rid = result.get_unhealthy_rids()[0]
 
         self.assertEqual(
@@ -61,8 +65,9 @@ class TestSurgery(FunctionalTestCase):
             ),
             unhealthy_rid.catalog_symptoms)
 
-        surgery = RemoveExtraRid(self.catalog, unhealthy_rid)
-        surgery.perform()
+        doctor = CatalogDoctor(self.catalog, unhealthy_rid)
+        self.assertIs(RemoveExtraRid, doctor.get_surgery())
+        doctor.perform_surgery()
 
         result = self.run_healthcheck()
         self.assertTrue(result.is_healthy())
@@ -75,6 +80,7 @@ class TestSurgery(FunctionalTestCase):
 
         result = self.run_healthcheck()
         self.assertFalse(result.is_healthy())
+        self.assertEqual(1, len(result.get_unhealthy_rids()))
         unhealthy_rid = result.get_unhealthy_rids()[0]
 
         self.assertEqual(
@@ -85,8 +91,9 @@ class TestSurgery(FunctionalTestCase):
             ),
             result.get_symptoms(unhealthy_rid.rid))
 
-        surgery = RemoveOrphanedRid(self.catalog, unhealthy_rid)
-        surgery.perform()
+        doctor = CatalogDoctor(self.catalog, unhealthy_rid)
+        self.assertIs(RemoveOrphanedRid, doctor.get_surgery())
+        doctor.perform_surgery()
 
         result = self.run_healthcheck()
         self.assertTrue(result.is_healthy())
@@ -96,6 +103,7 @@ class TestSurgery(FunctionalTestCase):
 
         result = self.run_healthcheck()
         self.assertFalse(result.is_healthy())
+        self.assertEqual(1, len(result.get_unhealthy_rids()))
         unhealthy_rid = result.get_unhealthy_rids()[0]
 
         self.assertEqual(
@@ -108,8 +116,9 @@ class TestSurgery(FunctionalTestCase):
                 ),
             result.get_symptoms(unhealthy_rid.rid))
 
-        surgery = RemoveOrphanedRid(self.catalog, unhealthy_rid)
-        surgery.perform()
+        doctor = CatalogDoctor(self.catalog, unhealthy_rid)
+        self.assertIs(RemoveOrphanedRid, doctor.get_surgery())
+        doctor.perform_surgery()
 
         result = self.run_healthcheck()
         self.assertTrue(result.is_healthy())
@@ -119,6 +128,7 @@ class TestSurgery(FunctionalTestCase):
 
         result = self.run_healthcheck()
         self.assertFalse(result.is_healthy())
+        self.assertEqual(1, len(result.get_unhealthy_rids()))
         unhealthy_rid = result.get_unhealthy_rids()[0]
 
         self.assertEqual(
@@ -128,8 +138,9 @@ class TestSurgery(FunctionalTestCase):
             ),
             result.get_symptoms(unhealthy_rid.rid))
 
-        surgery = ReindexMissingUUID(self.catalog, unhealthy_rid)
-        surgery.perform()
+        doctor = CatalogDoctor(self.catalog, unhealthy_rid)
+        self.assertIs(ReindexMissingUUID, doctor.get_surgery())
+        doctor.perform_surgery()
 
         result = self.run_healthcheck()
         self.assertTrue(result.is_healthy())
@@ -146,6 +157,7 @@ class TestSurgery(FunctionalTestCase):
 
         result = self.run_healthcheck()
         self.assertFalse(result.is_healthy())
+        self.assertEqual(1, len(result.get_unhealthy_rids()))
         unhealthy_rid = result.get_unhealthy_rids()[0]
         self.assertEqual(rid, unhealthy_rid.rid)
         self.assertEqual(
@@ -155,9 +167,10 @@ class TestSurgery(FunctionalTestCase):
             ),
             result.get_symptoms(unhealthy_rid.rid))
 
-        surgery = RemoveRidOrReindexObject(self.catalog, unhealthy_rid)
+        doctor = CatalogDoctor(self.catalog, unhealthy_rid)
+        self.assertIs(RemoveRidOrReindexObject, doctor.get_surgery())
         with self.assertRaises(CantPerformSurgery):
-            surgery.perform()
+            doctor.perform_surgery()
 
     def test_surgery_remove_object_moved_into_parent_and_found_via_acquisition(self):
         grandchild = create(Builder('folder')
@@ -179,6 +192,7 @@ class TestSurgery(FunctionalTestCase):
 
         result = self.run_healthcheck()
         self.assertFalse(result.is_healthy())
+        self.assertEqual(1, len(result.get_unhealthy_rids()))
         unhealthy_rid = result.get_unhealthy_rids()[0]
         self.assertEqual(rid, unhealthy_rid.rid)
         self.assertEqual(
@@ -188,17 +202,21 @@ class TestSurgery(FunctionalTestCase):
             ),
             result.get_symptoms(unhealthy_rid.rid))
 
-        surgery = RemoveRidOrReindexObject(self.catalog, unhealthy_rid)
-        surgery.perform()
+        doctor = CatalogDoctor(self.catalog, unhealthy_rid)
+        self.assertIs(RemoveRidOrReindexObject, doctor.get_surgery())
+        doctor.perform_surgery()
 
         result = self.run_healthcheck()
         self.assertTrue(result.is_healthy())
 
     def test_surgery_add_dropped_object_to_indices(self):
         self.drop_object_from_catalog_indexes(self.parent)
+        self.assertEqual(
+            {}, self.get_catalog_indexdata(self.parent, omit_empty=True))
 
         result = self.run_healthcheck()
         self.assertFalse(result.is_healthy())
+        self.assertEqual(1, len(result.get_unhealthy_rids()))
         unhealthy_rid = result.get_unhealthy_rids()[0]
         self.assertEqual(
             (
@@ -207,8 +225,9 @@ class TestSurgery(FunctionalTestCase):
             ),
             result.get_symptoms(unhealthy_rid.rid))
 
-        surgery = RemoveRidOrReindexObject(self.catalog, unhealthy_rid)
-        surgery.perform()
+        doctor = CatalogDoctor(self.catalog, unhealthy_rid)
+        self.assertIs(RemoveRidOrReindexObject, doctor.get_surgery())
+        doctor.perform_surgery()
 
         result = self.run_healthcheck()
         self.assertTrue(result.is_healthy())
@@ -252,7 +271,9 @@ class TestSurgery(FunctionalTestCase):
 
         result = self.run_healthcheck()
         self.assertFalse(result.is_healthy())
+        self.assertEqual(1, len(result.get_unhealthy_rids()))
         unhealthy_rid = result.get_unhealthy_rids()[0]
+        self.assertEqual(rid, unhealthy_rid.rid)
         self.assertEqual(
             (
                 'in_catalog_not_in_uuid_index',
@@ -260,8 +281,9 @@ class TestSurgery(FunctionalTestCase):
             ),
             unhealthy_rid.catalog_symptoms)
 
-        surgery = RemoveRidOrReindexObject(self.catalog, unhealthy_rid)
-        surgery.perform()
+        doctor = CatalogDoctor(self.catalog, unhealthy_rid)
+        self.assertIs(RemoveRidOrReindexObject, doctor.get_surgery())
+        doctor.perform_surgery()
 
         self.assertEqual(1, len(self.catalog))
         self.assertNotIn(rid, self.catalog.paths)

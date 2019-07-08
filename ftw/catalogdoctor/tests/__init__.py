@@ -89,11 +89,15 @@ class FunctionalTestCase(TestCase):
         setRoles(self.portal, TEST_USER_ID, list(roles))
         transaction.commit()
 
-    def get_catalog_indexdata(self, obj):
+    def get_catalog_indexdata(self, obj, omit_empty=False):
         """Return the catalog index data for an object as dict.
         """
         self.maybe_process_indexing_queue()
-        return self.portal_catalog.getIndexDataForRID(self.get_rid(obj))
+        index_data = self.portal_catalog.getIndexDataForRID(self.get_rid(obj))
+        if omit_empty:
+            index_data = dict((key, value) for key, value in index_data.items()
+                              if value)
+        return index_data
 
     def get_catalog_metadata(self, obj):
         """Return the catalog metadata for an object as dict.
