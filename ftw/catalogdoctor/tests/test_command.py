@@ -1,7 +1,5 @@
 from ftw.builder import Builder
 from ftw.builder import create
-from ftw.catalogdoctor.command import _parse
-from ftw.catalogdoctor.command import _setup_parser
 from ftw.catalogdoctor.tests import FunctionalTestCase
 
 
