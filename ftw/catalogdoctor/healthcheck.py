@@ -184,7 +184,7 @@ class HealthCheckResult(object):
         self.uuid_index_index_length = uuid_index_index_length
         self.uuid_index_unindex_length = uuid_index_unindex_length
 
-    def _make_unhealthy_rid(self, rid, path=None):
+    def _get_or_add_unhealthy_rid(self, rid, path=None):
         if rid not in self.unhealthy_rids:
             self.unhealthy_rids[rid] = UnhealthyRid(rid)
 
@@ -194,7 +194,7 @@ class HealthCheckResult(object):
         return unhealthy_rid
 
     def report_symptom(self, name, rid, path=None):
-        unhealthy_rid = self._make_unhealthy_rid(rid, path=path)
+        unhealthy_rid = self._get_or_add_unhealthy_rid(rid, path=path)
         unhealthy_rid.report_catalog_symptom(name)
         return unhealthy_rid
 
