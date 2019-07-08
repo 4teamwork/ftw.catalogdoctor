@@ -391,6 +391,9 @@ class CatalogDoctor(object):
     Surgeries are assigned based on symptoms. For each set of symptoms a
     surgical procedure can be registered. This decides if an unhealthy rid can
     be treated.
+
+    When you add symptom tuples to surgeries make sure they are sorted
+    alphabetically.
     """
     surgeries = {
         (
