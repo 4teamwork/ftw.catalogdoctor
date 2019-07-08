@@ -15,7 +15,7 @@ from Products.PluginIndexes.UUIDIndex.UUIDIndex import UUIDIndex
 from Products.ZCTextIndex.ZCTextIndex import ZCTextIndex
 
 
-class IndexSurgery(object):
+class SurgeryStep(object):
 
     def __init__(self, index, rid):
         self.index = index
@@ -48,14 +48,14 @@ class IndexSurgery(object):
         raise NotImplementedError
 
 
-class NullSurgery(IndexSurgery):
+class NullStep(SurgeryStep):
     """Don't do anything."""
 
     def perform(self):
         pass
 
 
-class RemoveFromUUIDIndex(IndexSurgery):
+class RemoveFromUUIDIndex(SurgeryStep):
     """Remove rid from a `UUIDIndex`."""
 
     def _remove_keys_pointing_to_rid(self, index, linked_length=None):
@@ -68,7 +68,7 @@ class RemoveFromUUIDIndex(IndexSurgery):
         self._remove_rid_from_unindex(self.index._unindex)
 
 
-class RemoveFromUnIndex(IndexSurgery):
+class RemoveFromUnIndex(SurgeryStep):
     """Remove a rid from a simple forward and reverse index."""
 
     def perform(self):
@@ -77,7 +77,7 @@ class RemoveFromUnIndex(IndexSurgery):
         self._remove_rid_from_unindex(self.index._unindex)
 
 
-class RemoveFromDateRangeIndex(IndexSurgery):
+class RemoveFromDateRangeIndex(SurgeryStep):
     """Remove rid from a `DateRangeIndex`."""
 
     def perform(self):
@@ -94,7 +94,7 @@ class RemoveFromDateRangeIndex(IndexSurgery):
         self._remove_rid_from_unindex(self.index._unindex)
 
 
-class RemoveFromBooleanIndex(IndexSurgery):
+class RemoveFromBooleanIndex(SurgeryStep):
     """Remove rid from a `BooleanIndex`.
 
     Lazily skips checking whether the boolean index should be inverted or not,
@@ -111,7 +111,7 @@ class RemoveFromBooleanIndex(IndexSurgery):
             self.index._index_length.change(-1)
 
 
-class RemoveFromExtendedPathIndex(IndexSurgery):
+class RemoveFromExtendedPathIndex(SurgeryStep):
     """Remove rid from a `ExtendedPathIndex`."""
 
     def perform(self):
@@ -142,7 +142,7 @@ class RemoveFromExtendedPathIndex(IndexSurgery):
             self.index._length.change(-1)
 
 
-class UnindexObject(IndexSurgery):
+class UnindexObject(SurgeryStep):
     """Remove a rid via the official `unindex_object` API."""
 
     def perform(self):
@@ -152,14 +152,14 @@ class UnindexObject(IndexSurgery):
 class Surgery(object):
     """Surgery can fix a concrete set of symptoms."""
 
-    removal = {
+    index_to_step = {
         BooleanIndex: RemoveFromBooleanIndex,
         DateIndex: RemoveFromUnIndex,
         DateRangeIndex: RemoveFromDateRangeIndex,
         DateRecurringIndex: RemoveFromUnIndex,
         ExtendedPathIndex: RemoveFromExtendedPathIndex,
         FieldIndex: RemoveFromUnIndex,
-        GopipIndex: NullSurgery,  # not a real index
+        GopipIndex: NullStep,  # not a real index
         KeywordIndex: RemoveFromUnIndex,
         UUIDIndex: RemoveFromUUIDIndex,
         ZCTextIndex: UnindexObject,
@@ -175,13 +175,13 @@ class Surgery(object):
 
     def unindex_rid_from_all_catalog_indexes(self, rid):
         for idx in self.catalog.indexes.values():
-            surgery = self.removal.get(type(idx))
+            surgery_step = self.index_to_step.get(type(idx))
 
-            if not surgery:
+            if not surgery_step:
                 raise CantPerformSurgery(
                     'Unhandled index type: {0!r}'.format(idx))
 
-            surgery(idx, rid).perform()
+            surgery_step(idx, rid).perform()
 
         self.surgery_log.append(
             "Removed rid from all catalog indexes.")
