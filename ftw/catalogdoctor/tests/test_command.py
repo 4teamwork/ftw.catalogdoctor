@@ -164,12 +164,3 @@ class TestDoctorCommand(FunctionalTestCase):
             'dryrun!',
         ]
         self.assertEqual(expected, self.run_command('doctor', '-n', 'surgery'))
-
-    def test_healthcheck_is_always_in_dryrun_mode(self):
-        parser = _setup_parser(self.app)
-        parsed_args = _parse(parser, ['-c', 'doctor', 'healthcheck'])
-        self.assertTrue(parsed_args.dryrun)
-
-        parser = _setup_parser(self.app)
-        parsed_args = _parse(parser, ['-c', 'doctor', '-n', 'healthcheck'])
-        self.assertTrue(parsed_args.dryrun)

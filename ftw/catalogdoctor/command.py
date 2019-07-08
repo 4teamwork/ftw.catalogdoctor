@@ -46,9 +46,12 @@ class ConsoleOutput(object):
 
 
 def healthcheck_command(portal_catalog, args, formatter):
-    if args.dryrun:
-        transaction.doom()  # extra paranoia, prevent erroneous commit
+    transaction.doom()  # extra paranoia, prevent erroneous commit
 
+    return _run_healthcheck(portal_catalog, formatter)
+
+
+def _run_healthcheck(portal_catalog, formatter):
     result = CatalogHealthCheck(catalog=portal_catalog).run()
     result.write_result(formatter)
     return result
@@ -60,7 +63,7 @@ def surgery_command(portal_catalog, args, formatter):
         formatter.info('')
         transaction.doom()
 
-    result = healthcheck_command(portal_catalog, args, formatter)
+    result = _run_healthcheck(portal_catalog, formatter)
     if result.is_healthy():
         transaction.doom()  # extra paranoia, prevent erroneous commit
         formatter.info('Catalog is healthy, no surgery is needed.')
@@ -89,7 +92,7 @@ def surgery_command(portal_catalog, args, formatter):
     processQueue()
 
     formatter.info('Performing post-surgery healthcheck:')
-    post_result = healthcheck_command(portal_catalog, args, formatter)
+    post_result = _run_healthcheck(portal_catalog, formatter)
     if not post_result.is_healthy():
         transaction.doom()   # extra paranoia, prevent erroneous commit
         formatter.info('Not all health problems could be fixed, aborting.')
@@ -118,7 +121,7 @@ def _setup_parser(app):
     parser.add_argument(
         '-n', '--dry-run', dest='dryrun',
         default=False, action="store_true",
-        help='Dryrun, do not commit changes')
+        help='Dryrun, do not commit changes. Only relevant for surgery.')
 
     commands = parser.add_subparsers(dest='command')
     healthcheck = commands.add_parser(
@@ -135,11 +138,7 @@ def _setup_parser(app):
 
 
 def _parse(parser, args):
-    parsed_args = parser.parse_args(args)
-    # healthceck never commits and thus we always enable the dryrun flag.
-    if parsed_args.command == 'healthcheck':
-        parsed_args.dryrun = True
-    return parsed_args
+    return parser.parse_args(args)
 
 
 def _run(parsed_args, app, formatter):
