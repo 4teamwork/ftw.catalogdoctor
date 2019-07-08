@@ -93,15 +93,13 @@ class FunctionalTestCase(TestCase):
         """Return the catalog index data for an object as dict.
         """
         self.maybe_process_indexing_queue()
-        rid = self.portal_catalog.getrid('/'.join(obj.getPhysicalPath()))
-        return self.portal_catalog.getIndexDataForRID(rid)
+        return self.portal_catalog.getIndexDataForRID(self.get_rid(obj))
 
     def get_catalog_metadata(self, obj):
         """Return the catalog metadata for an object as dict.
         """
         self.maybe_process_indexing_queue()
-        rid = self.portal_catalog.getrid('/'.join(obj.getPhysicalPath()))
-        return self.portal_catalog.getMetadataForRID(rid)
+        return self.portal_catalog.getMetadataForRID(self.get_rid(obj))
 
     def reindex_object(self, obj):
         obj.reindexObject()
