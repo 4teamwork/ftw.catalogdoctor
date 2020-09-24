@@ -11,7 +11,7 @@ from plone.app.testing import setRoles
 from plone.app.testing import TEST_USER_ID
 from random import randint
 from StringIO import StringIO
-from unittest2 import TestCase
+from unittest import TestCase
 import transaction
 import uuid
 
