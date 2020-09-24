@@ -44,7 +44,7 @@ class TestSurgery(FunctionalTestCase):
 
         doctor = CatalogDoctor(self.catalog, unhealthy_rid)
         self.assertIs(RemoveExtraRid, doctor.get_surgery())
-        doctor.perform_surgery()
+        self.perform_surgeries(result)
 
         result = self.run_healthcheck()
         self.assertTrue(result.is_healthy())
@@ -67,7 +67,7 @@ class TestSurgery(FunctionalTestCase):
 
         doctor = CatalogDoctor(self.catalog, unhealthy_rid)
         self.assertIs(RemoveExtraRid, doctor.get_surgery())
-        doctor.perform_surgery()
+        self.perform_surgeries(result)
 
         result = self.run_healthcheck()
         self.assertTrue(result.is_healthy())
@@ -93,7 +93,7 @@ class TestSurgery(FunctionalTestCase):
 
         doctor = CatalogDoctor(self.catalog, unhealthy_rid)
         self.assertIs(RemoveOrphanedRid, doctor.get_surgery())
-        doctor.perform_surgery()
+        self.perform_surgeries(result)
 
         result = self.run_healthcheck()
         self.assertTrue(result.is_healthy())
@@ -118,7 +118,7 @@ class TestSurgery(FunctionalTestCase):
 
         doctor = CatalogDoctor(self.catalog, unhealthy_rid)
         self.assertIs(RemoveOrphanedRid, doctor.get_surgery())
-        doctor.perform_surgery()
+        self.perform_surgeries(result)
 
         result = self.run_healthcheck()
         self.assertTrue(result.is_healthy())
@@ -140,7 +140,7 @@ class TestSurgery(FunctionalTestCase):
 
         doctor = CatalogDoctor(self.catalog, unhealthy_rid)
         self.assertIs(ReindexMissingUUID, doctor.get_surgery())
-        doctor.perform_surgery()
+        self.perform_surgeries(result)
 
         result = self.run_healthcheck()
         self.assertTrue(result.is_healthy())
@@ -170,7 +170,7 @@ class TestSurgery(FunctionalTestCase):
         doctor = CatalogDoctor(self.catalog, unhealthy_rid)
         self.assertIs(RemoveRidOrReindexObject, doctor.get_surgery())
         with self.assertRaises(CantPerformSurgery):
-            doctor.perform_surgery()
+            self.perform_surgeries(result)
 
     def test_surgery_remove_object_moved_into_parent_and_found_via_acquisition(self):
         grandchild = create(Builder('folder')
@@ -204,7 +204,7 @@ class TestSurgery(FunctionalTestCase):
 
         doctor = CatalogDoctor(self.catalog, unhealthy_rid)
         self.assertIs(RemoveRidOrReindexObject, doctor.get_surgery())
-        doctor.perform_surgery()
+        self.perform_surgeries(result)
 
         result = self.run_healthcheck()
         self.assertTrue(result.is_healthy())
@@ -227,7 +227,7 @@ class TestSurgery(FunctionalTestCase):
 
         doctor = CatalogDoctor(self.catalog, unhealthy_rid)
         self.assertIs(RemoveRidOrReindexObject, doctor.get_surgery())
-        doctor.perform_surgery()
+        self.perform_surgeries(result)
 
         result = self.run_healthcheck()
         self.assertTrue(result.is_healthy())
@@ -283,7 +283,7 @@ class TestSurgery(FunctionalTestCase):
 
         doctor = CatalogDoctor(self.catalog, unhealthy_rid)
         self.assertIs(RemoveRidOrReindexObject, doctor.get_surgery())
-        doctor.perform_surgery()
+        self.perform_surgeries(result)
 
         self.assertEqual(1, len(self.catalog))
         self.assertNotIn(rid, self.catalog.paths)
