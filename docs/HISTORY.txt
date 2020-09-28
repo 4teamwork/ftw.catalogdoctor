@@ -5,6 +5,7 @@ Changelog
 1.0.1 (unreleased)
 ------------------
 
+- Check for shorter path rather than direct parent in surgery safeguard. [deiferni]
 - Use extra rid removal surgery for new symptoms. [deiferni]
 
 
