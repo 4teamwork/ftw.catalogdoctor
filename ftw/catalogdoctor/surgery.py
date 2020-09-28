@@ -1,8 +1,7 @@
-from Acquisition import aq_chain
-from Acquisition import aq_inner
 from ftw.catalogdoctor.compat import DateRecurringIndex
 from ftw.catalogdoctor.exceptions import CantPerformSurgery
 from ftw.catalogdoctor.utils import find_keys_pointing_to_rid
+from ftw.catalogdoctor.utils import is_shorter_path_to_same_file
 from plone import api
 from plone.app.folder.nogopip import GopipIndex
 from Products.ExtendedPathIndex.ExtendedPathIndex import ExtendedPathIndex
@@ -360,16 +359,19 @@ class RemoveRidOrReindexObject(Surgery):
 
             return
 
-        # special case when the object has been moved into one of its parents.
-        # it can be traversed as it is found via acquisition. safeguard so we
-        # only unindex objects where this special case is true.
+        # special case when the object or one of its parents has been moved.
+        # the object can be traversed as it is found via acquisition.
         obj_path = '/'.join(obj.getPhysicalPath())
         if obj_path != path:
-            if aq_chain(aq_inner(obj))[1:] == aq_chain(obj)[1:]:
+            # we only want to apply this fix for objects moved into their
+            # parent hierarchy in some manner. abort if this is not the case.
+            # maybe this restriction can be loosened a bit  eventually but for
+            # now it covers what we've seen in production.
+            if not is_shorter_path_to_same_file(obj_path, path):
                 raise CantPerformSurgery(
                     "Object path after traversing {} differs from path before "
-                    "traversing and in catalog {}, but acquisition chain "
-                    "is unexpectedly equal.".format(obj_path, path))
+                    "traversing, but correct path {} cannot be found in "
+                    "catalog.".format(obj_path, path))
 
             self.unindex_rid_from_all_catalog_indexes(rid)
             self.delete_rid_from_paths(rid)

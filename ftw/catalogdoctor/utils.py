@@ -18,3 +18,26 @@ def contains_or_equals_rid(rid, rids_or_rid):
         return rid in rids_or_rid
     except TypeError:
         return rid == rids_or_rid
+
+
+def is_shorter_path_to_same_file(shorter, longer):
+    """Return whether `shorter` is a part of `longer`.
+
+    Will return `True` when `shorter` is a path pointing to the same last
+    segment but shortened by some intermediate segments that are present in
+    `longer`.
+    """
+    shorter_path_segments = shorter.rstrip('/').strip('/').split('/')
+    longer_segments = longer.rstrip('/').strip('/').split('/')
+    if len(shorter_path_segments) >= len(longer_segments):
+        return False
+
+    # last element must be the same.
+    if shorter_path_segments.pop() != longer_segments.pop():
+        return False
+
+    # every segment in longer must be present in shorter in correct order.
+    for segment in longer_segments:
+        if shorter_path_segments and shorter_path_segments[0] == segment:
+            shorter_path_segments.pop(0)
+    return len(shorter_path_segments) == 0

@@ -242,6 +242,46 @@ class TestSurgery(FunctionalTestCase):
         result = self.run_healthcheck()
         self.assertTrue(result.is_healthy())
 
+    def test_surgery_remove_object_moved_with_parent_and_found_via_acquisition(self):
+        level_1 = create(Builder('folder')
+                         .within(self.child)
+                        .titled(u'level 1'))
+        level_2 = create(Builder('folder')
+                        .within(level_1)
+                        .titled(u'level 2'))
+
+        old_level_2_path = '/'.join(level_2.getPhysicalPath())
+        # move level_1 one level up, this also will move its child, level_2
+        self.parent.manage_pasteObjects(
+            self.child.manage_cutObjects(level_1.getId()),
+        )
+
+        # re-register level_2 path with different rid
+        rid = self.choose_next_rid()
+        self.catalog.uids[old_level_2_path] = rid
+        self.catalog.paths[rid] = old_level_2_path
+        self.catalog.data[rid] = {}
+        self.catalog._length.change(1)
+
+        result = self.run_healthcheck()
+        self.assertFalse(result.is_healthy())
+        self.assertEqual(1, len(result.get_unhealthy_rids()))
+        unhealthy_rid = result.get_unhealthy_rids()[0]
+        self.assertEqual(rid, unhealthy_rid.rid)
+        self.assertEqual(
+            (
+                'in_catalog_not_in_uuid_index',
+                'in_catalog_not_in_uuid_unindex',
+            ),
+            result.get_symptoms(unhealthy_rid.rid))
+
+        doctor = CatalogDoctor(self.catalog, unhealthy_rid)
+        self.assertIs(RemoveRidOrReindexObject, doctor.get_surgery())
+        self.perform_surgeries(result)
+
+        result = self.run_healthcheck()
+        self.assertTrue(result.is_healthy())
+
     def test_surgery_add_dropped_object_to_indices(self):
         self.drop_object_from_catalog_indexes(self.parent)
         self.assertEqual(
