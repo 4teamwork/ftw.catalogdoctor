@@ -395,12 +395,20 @@ class CatalogDoctor(object):
     When you add symptom tuples to surgeries make sure they are sorted
     alphabetically.
     """
+
     surgeries = {
         (
             'in_metadata_keys_not_in_uids_values',
             'in_paths_keys_not_in_uids_values',
             'in_uuid_unindex_not_in_catalog',
             'in_uuid_unindex_not_in_uuid_index',
+            'uids_tuple_mismatches_paths_tuple',
+        ): RemoveExtraRid,
+        (
+            'in_metadata_keys_not_in_uids_values',
+            'in_paths_keys_not_in_uids_values',
+            'in_uuid_index_not_in_catalog',
+            'in_uuid_unindex_not_in_catalog',
             'uids_tuple_mismatches_paths_tuple',
         ): RemoveExtraRid,
         (

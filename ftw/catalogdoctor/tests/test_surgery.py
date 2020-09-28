@@ -72,6 +72,39 @@ class TestSurgery(FunctionalTestCase):
         result = self.run_healthcheck()
         self.assertTrue(result.is_healthy())
 
+    def test_surgery_remove_extra_rid_with_stale_uuid(self):
+        self.recatalog_object_with_new_rid(self.child, drop_from_indexes=False)
+
+        result = self.run_healthcheck()
+        self.assertFalse(result.is_healthy())
+        unhealthy = result.get_unhealthy_rids()
+        self.assertEqual(2, len(unhealthy))
+
+        self.assertEqual(
+            (
+                'in_metadata_keys_not_in_uids_values',
+                'in_paths_keys_not_in_uids_values',
+                'in_uuid_index_not_in_catalog',
+                'in_uuid_unindex_not_in_catalog',
+                'uids_tuple_mismatches_paths_tuple',
+            ),
+            result.get_symptoms(unhealthy[0].rid))
+        self.assertEqual(
+            (
+                'in_catalog_not_in_uuid_index',
+                'in_uuid_unindex_not_in_uuid_index',
+            ),
+            result.get_symptoms(unhealthy[1].rid))
+        doctor = CatalogDoctor(self.catalog, unhealthy[0])
+        self.assertIs(RemoveExtraRid, doctor.get_surgery())
+        doctor = CatalogDoctor(self.catalog, unhealthy[1])
+        self.assertIs(ReindexMissingUUID, doctor.get_surgery())
+
+        self.perform_surgeries(result)
+
+        result = self.run_healthcheck()
+        self.assertTrue(result.is_healthy())
+
     def test_surgery_remove_orphaned_rid_not_in_indexes(self):
         path = '/'.join(self.child.getPhysicalPath())
         self.drop_object_from_catalog_indexes(self.child)
