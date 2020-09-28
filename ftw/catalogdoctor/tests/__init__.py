@@ -4,13 +4,14 @@ from Acquisition import aq_parent
 from ftw.catalogdoctor.command import doctor_cmd
 from ftw.catalogdoctor.compat import processQueue
 from ftw.catalogdoctor.healthcheck import CatalogHealthCheck
+from ftw.catalogdoctor.scheduler import SurgeryScheduler
 from ftw.catalogdoctor.testing import CATALOGDOCTOR_FUNCTIONAL
 from plone import api
 from plone.app.testing import setRoles
 from plone.app.testing import TEST_USER_ID
 from random import randint
 from StringIO import StringIO
-from unittest2 import TestCase
+from unittest import TestCase
 import transaction
 import uuid
 
@@ -61,6 +62,11 @@ class FunctionalTestCase(TestCase):
         self.maybe_process_indexing_queue()  # enforce up to date catalog
         healthcheck = CatalogHealthCheck(self.portal_catalog)
         return healthcheck.run()
+
+    def perform_surgeries(self, healthcheck_result):
+        scheduler = SurgeryScheduler(
+            healthcheck_result, catalog=self.portal_catalog)
+        return scheduler.perform_surgeries()
 
     def choose_next_rid(self):
         """Return a currently unused rid for testing.
@@ -184,14 +190,15 @@ class FunctionalTestCase(TestCase):
         self.maybe_process_indexing_queue()
         return ob
 
-    def recatalog_object_with_new_rid(self, obj):
+    def recatalog_object_with_new_rid(self, obj, drop_from_indexes=True):
         """Make catalog unhealthy by recataloging an object with a new rid.
 
         This will leave the old rid behind in catalog metadata and in the
         rid->path mapping but remove it from all indexes.
 
         """
-        self.drop_object_from_catalog_indexes(obj)
+        if drop_from_indexes:
+            self.drop_object_from_catalog_indexes(obj)
 
         path = '/'.join(obj.getPhysicalPath())
         del self.catalog.uids[path]

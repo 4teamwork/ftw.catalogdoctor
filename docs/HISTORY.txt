@@ -5,7 +5,7 @@ Changelog
 1.0.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Use extra rid removal surgery for new symptoms. [deiferni]
 
 
 1.0.0 (2019-07-08)

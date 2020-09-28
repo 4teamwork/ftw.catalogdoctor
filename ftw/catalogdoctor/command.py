@@ -1,7 +1,7 @@
 from __future__ import print_function
 from ftw.catalogdoctor.compat import processQueue
 from ftw.catalogdoctor.healthcheck import CatalogHealthCheck
-from ftw.catalogdoctor.surgery import CatalogDoctor
+from ftw.catalogdoctor.scheduler import SurgeryScheduler
 from Products.CMFCore.utils import getToolByName
 from Products.CMFPlone.interfaces import IPloneSiteRoot
 from Testing.makerequest import makerequest
@@ -71,15 +71,12 @@ def surgery_command(portal_catalog, args, formatter):
 
     there_is_nothing_we_can_do = []
     formatter.info('Performing surgery:')
-    for unhealthy_rid in result.get_unhealthy_rids():
-        doctor = CatalogDoctor(result.catalog, unhealthy_rid)
-        if doctor.can_perform_surgery():
-            surgery = doctor.perform_surgery()
-            surgery.write_result(formatter)
-            formatter.info('')
-        else:
-            there_is_nothing_we_can_do.append(unhealthy_rid)
+    scheduler = SurgeryScheduler(result, catalog=portal_catalog)
+    there_is_nothing_we_can_do, surgeries = scheduler.perform_surgeries()
 
+    for surgery in surgeries:
+        surgery.write_result(formatter)
+        formatter.info('')
     if there_is_nothing_we_can_do:
         formatter.info('The following unhealthy rids could not be fixed:')
         for unhealthy_rid in there_is_nothing_we_can_do:
