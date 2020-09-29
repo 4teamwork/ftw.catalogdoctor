@@ -156,6 +156,63 @@ class TestSurgery(FunctionalTestCase):
         result = self.run_healthcheck()
         self.assertTrue(result.is_healthy())
 
+    def test_surgery_remove_orphaned_rid_where_object_still_present(self):
+        rid = self.get_rid(self.child)
+        del self.catalog.uids[self.get_physical_path(self.child)]
+        uuid_index = self.catalog.indexes['UID']
+        del uuid_index._index[uuid_index._unindex[rid]]
+        uuid_index._length.change(-1)
+
+        result = self.run_healthcheck()
+        self.assertFalse(result.is_healthy())
+        self.assertEqual(1, len(result.get_unhealthy_rids()))
+        unhealthy_rid = result.get_unhealthy_rids()[0]
+
+        self.assertEqual(
+            (
+                'in_metadata_keys_not_in_uids_values',
+                'in_paths_keys_not_in_uids_values',
+                'in_paths_values_not_in_uids_keys',
+                'in_uuid_unindex_not_in_catalog',
+                'in_uuid_unindex_not_in_uuid_index',
+                ),
+            result.get_symptoms(unhealthy_rid.rid))
+
+        doctor = CatalogDoctor(self.catalog, unhealthy_rid)
+        self.assertIs(RemoveOrphanedRid, doctor.get_surgery())
+        self.perform_surgeries(result)
+
+        result = self.run_healthcheck()
+        self.assertTrue(result.is_healthy())
+
+        self.assertDictContainsSubset(
+            {'Creator': 'test_user_1_',
+             'Description': [],
+             'SearchableText': ['child', 'child'],
+             'Subject': '',
+             'Title': ['child'],
+             'Type': u'Folder',
+             'allowedRolesAndUsers': ['Anonymous'],
+             'cmf_uid': '',
+             'commentators': '',
+             'effectiveRange': (-1560, None),
+             'getId': 'child',
+             'getObjPositionInParent': [],
+             'getRawRelatedItems': '',
+             'id': 'child',
+             'in_reply_to': '',
+             'is_default_page': 0,
+             'is_folderish': 1,
+             'meta_type': 'Dexterity Container',
+             'path': '/plone/parent/child',
+             'portal_type': 'Folder',
+             'review_state': '',
+             'sortable_title': 'child',
+             'start': '',
+             'sync_uid': '',
+             'total_comments': 0},
+            self.get_catalog_indexdata(self.child))
+
     def test_surgery_reindex_missing_uuid(self):
         self.make_missing_uuid_forward_index_entry(self.child)
 

@@ -217,6 +217,10 @@ class Surgery(object):
 class RemoveExtraRid(Surgery):
     """Remove an extra rid from the catalog.
 
+    A rid is considered a potential *extra* when there is an entry in
+    the path->rid mapping (uids) for the corresponding path but pointing to a
+    different rid.
+
     In this case the object at path still exists but two rids have been
     generated for that object.
 
@@ -245,11 +249,16 @@ class RemoveExtraRid(Surgery):
 class RemoveOrphanedRid(Surgery):
     """Remove an orphaned rid from the catalog.
 
+    A rid is considered a potential *orphan* when there is no longer an entry
+    in the path->rid mapping (uids) for the corresponding path.
+
     In this case the object at path no longer exists but the rid still remains
-    in the catalog.
+    in the catalog or somehow the path vanished from the primary source of
+    trhuth.
 
     We remove the orphaned rid from metadata, rid->path mapping and from all
-    indexes.
+    indexes. If the object is still traversable we reindex the object after
+    removal, causing the catalog to treat it as a new object.
     """
     def perform(self):
         rid = self.unhealthy_rid.rid
@@ -266,14 +275,17 @@ class RemoveOrphanedRid(Surgery):
 
         portal = api.portal.get()
         obj = portal.unrestrictedTraverse(path, None)
-        if obj is not None:
-            raise CantPerformSurgery(
-                "Unexpectedly found object at {}".format(path))
 
         self.unindex_rid_from_all_catalog_indexes(rid)
         self.delete_rid_from_paths(rid)
         self.delete_rid_from_metadata(rid)
         self.change_catalog_length(-1)
+
+        if obj:
+            # the object is still there and somehow vanished from the indexes.
+            # we reindex it, this creates a rid in the catalog.
+            obj.reindexObject()
+            self.surgery_log.append("Reindexed object.")
 
 
 class ReindexMissingUUID(Surgery):
