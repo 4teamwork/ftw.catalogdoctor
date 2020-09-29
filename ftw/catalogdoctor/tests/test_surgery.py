@@ -7,6 +7,7 @@ from ftw.catalogdoctor.surgery import RemoveExtraRid
 from ftw.catalogdoctor.surgery import RemoveOrphanedRid
 from ftw.catalogdoctor.surgery import RemoveRidOrReindexObject
 from ftw.catalogdoctor.tests import FunctionalTestCase
+from plone.uuid.interfaces import IUUID
 
 
 class TestSurgery(FunctionalTestCase):
@@ -234,6 +235,49 @@ class TestSurgery(FunctionalTestCase):
 
         result = self.run_healthcheck()
         self.assertTrue(result.is_healthy())
+
+    def test_surgery_drop_duplicate_from_acquisition_from_catalog_for_missing_uuid(self):
+        grandchild = create(Builder('folder')
+                            .within(self.child)
+                            .titled(u'nastygrandchild'))
+
+        old_grandchild_path = '/'.join(grandchild.getPhysicalPath())
+        # move object into parent's parent
+        self.parent.manage_pasteObjects(
+            self.child.manage_cutObjects(grandchild.getId()),
+        )
+
+        # re-register old grandchild path with different rid
+        rid = self.choose_next_rid()
+        self.catalog.uids[old_grandchild_path] = rid
+        self.catalog.paths[rid] = old_grandchild_path
+        self.catalog.indexes['UID']._unindex[rid] = IUUID(grandchild)
+        self.catalog.data[rid] = {}
+        self.catalog._length.change(1)
+
+        result = self.run_healthcheck()
+        self.assertFalse(result.is_healthy())
+        self.assertEqual(1, len(result.get_unhealthy_rids()))
+        unhealthy_rid = result.get_unhealthy_rids()[0]
+
+        self.assertEqual(
+            (
+                'in_catalog_not_in_uuid_index',
+                'in_uuid_unindex_not_in_uuid_index',
+            ),
+            result.get_symptoms(unhealthy_rid.rid))
+
+        doctor = CatalogDoctor(self.catalog, unhealthy_rid)
+        self.assertIs(ReindexMissingUUID, doctor.get_surgery())
+        self.perform_surgeries(result)
+
+        result = self.run_healthcheck()
+        self.assertTrue(result.is_healthy())
+
+        self.assertNotIn(old_grandchild_path, self.catalog.uids)
+        self.assertNotIn(rid, self.catalog.paths)
+        self.assertNotIn(rid, self.catalog.indexes['UID']._unindex)
+        self.assertNotIn(rid, self.catalog.data)
 
     def test_surgery_remove_object_moved_into_parent_and_found_via_acquisition_abort(self):
         self.parent['qux'] = self.child
