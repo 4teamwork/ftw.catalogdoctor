@@ -203,6 +203,35 @@ class Surgery(object):
         self.surgery_log.append(
             "Removed path from uids (the path->rid mapping).")
 
+    def is_potential_rid_duplicate_from_acquisition(self, obj, path):
+        obj_path = '/'.join(obj.getPhysicalPath())
+        return obj_path != path
+
+    def unindex_rid_duplicate_from_acquisition(self, obj, path, rid):
+        """special case when the object or one of its parents has been moved.
+
+        the object can be traversed as it is found via acquisition.
+
+        we only want to apply this fix for objects moved into their
+        parent hierarchy in some manner. abort if this is not the case.
+        maybe this restriction can be loosened a bit  eventually but for
+        now it covers what we've seen in production.
+        """
+        obj_path = '/'.join(obj.getPhysicalPath())
+        if not is_shorter_path_to_same_file(obj_path, path):
+            raise CantPerformSurgery(
+                "Object path after traversing {} differs from path before "
+                "traversing, but correct path {} cannot be found in "
+                "catalog.".format(obj_path, path))
+
+        self.unindex_rid_from_all_catalog_indexes(rid)
+        self.delete_rid_from_paths(rid)
+        self.delete_rid_from_metadata(rid)
+        self.delete_path_from_uids(path)
+        self.change_catalog_length(-1)
+        self.surgery_log.append("Removed duplicate acquired via "
+                                "acquisition from catalog.")
+
     def change_catalog_length(self, delta):
         self.catalog._length.change(delta)
 
@@ -309,27 +338,8 @@ class ReindexMissingUUID(Surgery):
             raise CantPerformSurgery(
                 "Missing object at {}".format(path))
 
-        # special case when the object or one of its parents has been moved.
-        # the object can be traversed as it is found via acquisition.
-        obj_path = '/'.join(obj.getPhysicalPath())
-        if obj_path != path:
-            # we only want to apply this fix for objects moved into their
-            # parent hierarchy in some manner. abort if this is not the case.
-            # maybe this restriction can be loosened a bit  eventually but for
-            # now it covers what we've seen in production.
-            if not is_shorter_path_to_same_file(obj_path, path):
-                raise CantPerformSurgery(
-                    "Object path after traversing {} differs from path before "
-                    "traversing, but correct path {} cannot be found in "
-                    "catalog.".format(obj_path, path))
-
-            self.unindex_rid_from_all_catalog_indexes(rid)
-            self.delete_rid_from_paths(rid)
-            self.delete_rid_from_metadata(rid)
-            self.delete_path_from_uids(path)
-            self.change_catalog_length(-1)
-            self.surgery_log.append("Removed duplicate acquired via "
-                                    "acquisition from catalog.")
+        if self.is_potential_rid_duplicate_from_acquisition(obj, path):
+            self.unindex_rid_duplicate_from_acquisition(obj, path, rid)
             return
 
         # update UID index
@@ -391,29 +401,10 @@ class RemoveRidOrReindexObject(Surgery):
             self.delete_rid_from_metadata(rid)
             self.delete_path_from_uids(path)
             self.change_catalog_length(-1)
-
             return
 
-        # special case when the object or one of its parents has been moved.
-        # the object can be traversed as it is found via acquisition.
-        obj_path = '/'.join(obj.getPhysicalPath())
-        if obj_path != path:
-            # we only want to apply this fix for objects moved into their
-            # parent hierarchy in some manner. abort if this is not the case.
-            # maybe this restriction can be loosened a bit  eventually but for
-            # now it covers what we've seen in production.
-            if not is_shorter_path_to_same_file(obj_path, path):
-                raise CantPerformSurgery(
-                    "Object path after traversing {} differs from path before "
-                    "traversing, but correct path {} cannot be found in "
-                    "catalog.".format(obj_path, path))
-
-            self.unindex_rid_from_all_catalog_indexes(rid)
-            self.delete_rid_from_paths(rid)
-            self.delete_rid_from_metadata(rid)
-            self.delete_path_from_uids(path)
-            self.change_catalog_length(-1)
-
+        if self.is_potential_rid_duplicate_from_acquisition(obj, path):
+            self.unindex_rid_duplicate_from_acquisition(obj, path, rid)
             return
 
         # the object is still there and somehow vanished from the indexes.
