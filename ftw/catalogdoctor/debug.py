@@ -71,31 +71,42 @@ def pprint_btrees(btrees):
     pprint(btrees_to_python_collections(btrees))
 
 
-def pprint_obj_catalog_data(obj, metadata=False):
-    """Pretty-print data in catalog for a content object obj."""
+def pprint_obj_catalog_data(obj, idxs=None, metadata=False):
+    """Pretty-print data in catalog for a content object obj.
 
-    portal_catalog = api.portal.get_tool('portal_catalog')
+    WARNING: naive implementation:
+    - potentially loads the full catalog into memory
+    - should only be used to debug
+
+    """
     obj_path = '/'.join(obj.getPhysicalPath())
-    zcatalog = portal_catalog._catalog
-
-    rid = zcatalog.uids.get(obj_path, _no_entry)
-    pprint(get_catalog_data(rid, obj_path, metadata=metadata))
+    pprint(get_catalog_data(uid=obj_path, idxs=idxs, metadata=metadata))
 
 
-def pprint_rid_catalog_data(rid, metadata=False):
-    """Pretty-print data in catalog for rid."""
+def pprint_path_catalog_data(path, idxs=None, metadata=False):
+    """Pretty-print data in catalog for a content object obj.
 
-    portal_catalog = api.portal.get_tool('portal_catalog')
-    zcatalog = portal_catalog._catalog
+    WARNING: naive implementation:
+    - potentially loads the full catalog into memory
+    - should only be used to debug
 
-    if rid not in zcatalog.uids:
-        rid = _no_entry
-    uid = zcatalog.paths.get(rid, _no_entry)
-    pprint(get_catalog_data(rid, uid, metadata=metadata))
+    """
+    pprint(get_catalog_data(uid=path, idxs=idxs, metadata=metadata))
 
 
-def get_catalog_data(rid, uid, metadata=False):
-    """Return all data in catalog for rid and uid."""
+def pprint_rid_catalog_data(rid, idxs=None, metadata=False):
+    """Pretty-print data in catalog for rid.
+
+    WARNING: naive implementation:
+    - potentially loads the full catalog into memory
+    - should only be used to debug
+
+    """
+    pprint(get_catalog_data(rid=rid, idxs=idxs, metadata=metadata))
+
+
+def get_catalog_data(rid=None, uid=None, idxs=None, metadata=False):
+    """Return all data in catalog for rid or uid."""
 
     if rid and uid:
         raise TypeError('Either specify rid or uid, both are unsupported.')
@@ -113,7 +124,7 @@ def get_catalog_data(rid, uid, metadata=False):
             data['uids (path->rid)'] = {uid: rid}
             return data
 
-    data['indexes'] = get_extended_indexes_data(zcatalog, idxs, rid)
+    data['indexes'] = get_extended_indexes_data(zcatalog, rid, idxs=idxs)
     if metadata:
         data['metadata'] = portal_catalog.getMetadataForRID(rid)
 
@@ -126,11 +137,15 @@ def get_catalog_data(rid, uid, metadata=False):
     return data
 
 
-def get_extended_indexes_data(zcatalog, rid):
-    """Return all data stored in all zcatalog indexes for rid."""
+def get_extended_indexes_data(zcatalog, rid, idxs=None):
+    """Return all data stored in all or selected zcatalog indexes for rid."""
+    if idxs is not None:
+        idxs = set(idxs)
 
     indexes_data = {}
     for index_name in zcatalog.indexes:
+        if idxs is not None and index_name not in idxs:
+            continue
         index = zcatalog.getIndex(index_name)
         indexes_data[index_name] = get_extended_index_data(index, rid)
     return indexes_data

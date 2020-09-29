@@ -115,6 +115,22 @@ class TestDebug(FunctionalTestCase):
         del actual['indexes']['Title']
         self.assertEqual(self.expected, actual)
 
+    def test_debug_get_catalog_data_limited_indexes(self):
+        expected = {
+            'indexes': {
+                'Type': {'index': {u'Folder': 97}, 'unindex': {97: u'Folder'}},
+                'UID': {'index': {'setUp000000000000000000000000001': 97},
+                        'unindex': {97: 'setUp000000000000000000000000001'}},
+                'portal_type': {'index': {'Folder': 97},
+                                'unindex': {97: 'Folder'}},
+            },
+            'paths (rid->path)': {97: '/plone/folder'},
+            'uids (path->rid)': {'/plone/folder': 97}
+        }
+        actual = get_catalog_data(uid=self.get_physical_path(self.obj),
+                                  idxs=['Type', 'UID', 'portal_type'])
+        self.assertEqual(expected, actual)
+
     def test_debug_get_catalog_data_exclusive_parameters(self):
         with self.assertRaises(TypeError):
             get_catalog_data(rid=1234, uid='/something')
