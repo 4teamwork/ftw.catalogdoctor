@@ -50,6 +50,14 @@ There is also a `--dry-run` parameter that prevents committing changes.
     $ bin/instance doctor --dry-run surgery
 
 
+Debugging
+=========
+
+If you need to debug/analyze issues that ``ftw.catalogdoctor`` cannot fix yet
+have a look at the ``debug`` module. It provides useful functions to ``pprint``
+or inspect catalog state.
+
+
 Installation
 ============
 

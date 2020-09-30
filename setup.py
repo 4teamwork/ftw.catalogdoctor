@@ -10,6 +10,7 @@ tests_require = [
     'plone.app.contenttypes',
     'plone.app.testing',
     'plone.testing',
+    'pytz',
     'zope.configuration',
 ]
 
