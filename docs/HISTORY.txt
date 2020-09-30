@@ -2,7 +2,7 @@ Changelog
 =========
 
 
-1.0.1 (unreleased)
+1.1.0 (2020-09-30)
 ------------------
 
 - Drop duplicate objects from Acquisition when fixing UID index. [deiferni]
