@@ -317,42 +317,6 @@ class RemoveOrphanedRid(Surgery):
             self.surgery_log.append("Reindexed object.")
 
 
-class ReindexMissingUUID(Surgery):
-    """Reindex an uuid which is partially missing from the UID index.
-
-    Removing and reindexing the object seems to do the trick in such cases.
-    """
-    def perform(self):
-        rid = self.unhealthy_rid.rid
-
-        if len(self.unhealthy_rid.paths) != 1:
-            raise CantPerformSurgery(
-                "Expected exactly one affected path, got: {}"
-                .format(", ".join(self.unhealthy_rid.paths)))
-
-        path = list(self.unhealthy_rid.paths)[0]
-
-        portal = api.portal.get()
-        obj = portal.unrestrictedTraverse(path, None)
-        if obj is None:
-            raise CantPerformSurgery(
-                "Missing object at {}".format(path))
-
-        if self.is_potential_rid_duplicate_from_acquisition(obj, path):
-            self.unindex_rid_duplicate_from_acquisition(obj, path, rid)
-            return
-
-        # update UID index
-        index = self.catalog.indexes['UID']
-        RemoveFromUUIDIndex(index, rid).perform()
-        index.index_object(rid, obj)
-
-        # make sure catalog metadata is up to date as well
-        self.catalog.updateMetadata(obj, path, rid)
-
-        self.surgery_log.append("Reindexed UID index and updated metadata.")
-
-
 class RemoveRidOrReindexObject(Surgery):
     """Reindex an object for all indexes or remove the stray rid.
 
@@ -407,6 +371,9 @@ class RemoveRidOrReindexObject(Surgery):
             self.unindex_rid_duplicate_from_acquisition(obj, path, rid)
             return
 
+        # drop rid from indexes before reindex to make sure we have a clean
+        # new state and potential partial entries are removed before reindexing
+        self.unindex_rid_from_all_catalog_indexes(rid)
         # the object is still there and somehow vanished from the indexes.
         # we reindex to update indexes and metadata.
         obj.reindexObject()
@@ -459,7 +426,7 @@ class CatalogDoctor(object):
         (
             'in_catalog_not_in_uuid_index',
             'in_uuid_unindex_not_in_uuid_index',
-        ): ReindexMissingUUID,
+        ): RemoveRidOrReindexObject,
         (
             'in_catalog_not_in_uuid_index',
             'in_catalog_not_in_uuid_unindex',

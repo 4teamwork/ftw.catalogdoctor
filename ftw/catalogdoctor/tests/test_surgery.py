@@ -2,7 +2,6 @@ from ftw.builder import Builder
 from ftw.builder import create
 from ftw.catalogdoctor.exceptions import CantPerformSurgery
 from ftw.catalogdoctor.surgery import CatalogDoctor
-from ftw.catalogdoctor.surgery import ReindexMissingUUID
 from ftw.catalogdoctor.surgery import RemoveExtraRid
 from ftw.catalogdoctor.surgery import RemoveOrphanedRid
 from ftw.catalogdoctor.surgery import RemoveRidOrReindexObject
@@ -97,7 +96,7 @@ class TestSurgery(FunctionalTestCase):
         doctor = CatalogDoctor(self.catalog, unhealthy[0])
         self.assertIs(RemoveExtraRid, doctor.get_surgery())
         doctor = CatalogDoctor(self.catalog, unhealthy[1])
-        self.assertIs(ReindexMissingUUID, doctor.get_surgery())
+        self.assertIs(RemoveRidOrReindexObject, doctor.get_surgery())
 
         self.perform_surgeries(result)
 
@@ -224,7 +223,7 @@ class TestSurgery(FunctionalTestCase):
             result.get_symptoms(unhealthy_rid.rid))
 
         doctor = CatalogDoctor(self.catalog, unhealthy_rid)
-        self.assertIs(ReindexMissingUUID, doctor.get_surgery())
+        self.assertIs(RemoveRidOrReindexObject, doctor.get_surgery())
         self.perform_surgeries(result)
 
         self.assert_no_unhealthy_rids()
@@ -261,7 +260,7 @@ class TestSurgery(FunctionalTestCase):
             result.get_symptoms(unhealthy_rid.rid))
 
         doctor = CatalogDoctor(self.catalog, unhealthy_rid)
-        self.assertIs(ReindexMissingUUID, doctor.get_surgery())
+        self.assertIs(RemoveRidOrReindexObject, doctor.get_surgery())
         self.perform_surgeries(result)
 
         self.assert_no_unhealthy_rids()
