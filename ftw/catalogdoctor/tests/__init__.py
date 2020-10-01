@@ -199,7 +199,7 @@ class FunctionalTestCase(TestCase):
         self.maybe_process_indexing_queue()
         return ob
 
-    def recatalog_object_with_new_rid(self, obj, drop_from_indexes=True):
+    def recatalog_object_with_new_rid(self, obj, drop_from_indexes=True, rid=None):
         """Make catalog unhealthy by recataloging an object with a new rid.
 
         This will leave the old rid behind in catalog metadata and in the
@@ -211,6 +211,13 @@ class FunctionalTestCase(TestCase):
 
         path = '/'.join(obj.getPhysicalPath())
         del self.catalog.uids[path]
+        if rid:
+            # prepare insert with the specified rid, make sure catalog length
+            # is correct in that case
+            assert rid not in self.catalog.paths
+            self.catalog.uids[path] = rid
+            self.catalog.paths[rid] = path
+            self.catalog._length.change(1)
 
         self.catalog.catalogObject(obj, path)
 
