@@ -47,8 +47,7 @@ class TestSurgery(FunctionalTestCase):
         self.assertIs(RemoveExtraRid, doctor.get_surgery())
         self.perform_surgeries(result)
 
-        result = self.run_healthcheck()
-        self.assertTrue(result.is_healthy())
+        self.assert_no_unhealthy_rids()
 
     def test_surgery_remove_extra_rid_without_partial_uuid(self):
         self.recatalog_object_with_new_rid(self.child)
@@ -70,8 +69,7 @@ class TestSurgery(FunctionalTestCase):
         self.assertIs(RemoveExtraRid, doctor.get_surgery())
         self.perform_surgeries(result)
 
-        result = self.run_healthcheck()
-        self.assertTrue(result.is_healthy())
+        self.assert_no_unhealthy_rids()
 
     def test_surgery_remove_extra_rid_with_stale_uuid(self):
         self.recatalog_object_with_new_rid(self.child, drop_from_indexes=False)
@@ -103,8 +101,7 @@ class TestSurgery(FunctionalTestCase):
 
         self.perform_surgeries(result)
 
-        result = self.run_healthcheck()
-        self.assertTrue(result.is_healthy())
+        self.assert_no_unhealthy_rids()
 
     def test_surgery_remove_orphaned_rid_not_in_indexes(self):
         path = '/'.join(self.child.getPhysicalPath())
@@ -129,8 +126,7 @@ class TestSurgery(FunctionalTestCase):
         self.assertIs(RemoveOrphanedRid, doctor.get_surgery())
         self.perform_surgeries(result)
 
-        result = self.run_healthcheck()
-        self.assertTrue(result.is_healthy())
+        self.assert_no_unhealthy_rids()
 
     def test_surgery_remove_orphaned_rid_in_indexes(self):
         self.make_orphaned_rid(self.child)
@@ -154,8 +150,7 @@ class TestSurgery(FunctionalTestCase):
         self.assertIs(RemoveOrphanedRid, doctor.get_surgery())
         self.perform_surgeries(result)
 
-        result = self.run_healthcheck()
-        self.assertTrue(result.is_healthy())
+        self.assert_no_unhealthy_rids()
 
     def test_surgery_remove_orphaned_rid_where_object_still_present(self):
         rid = self.get_rid(self.child)
@@ -183,8 +178,7 @@ class TestSurgery(FunctionalTestCase):
         self.assertIs(RemoveOrphanedRid, doctor.get_surgery())
         self.perform_surgeries(result)
 
-        result = self.run_healthcheck()
-        self.assertTrue(result.is_healthy())
+        self.assert_no_unhealthy_rids()
 
         self.assertDictContainsSubset(
             {'Creator': 'test_user_1_',
@@ -233,8 +227,7 @@ class TestSurgery(FunctionalTestCase):
         self.assertIs(ReindexMissingUUID, doctor.get_surgery())
         self.perform_surgeries(result)
 
-        result = self.run_healthcheck()
-        self.assertTrue(result.is_healthy())
+        self.assert_no_unhealthy_rids()
 
     def test_surgery_drop_duplicate_from_acquisition_from_catalog_for_missing_uuid(self):
         grandchild = create(Builder('folder')
@@ -271,8 +264,7 @@ class TestSurgery(FunctionalTestCase):
         self.assertIs(ReindexMissingUUID, doctor.get_surgery())
         self.perform_surgeries(result)
 
-        result = self.run_healthcheck()
-        self.assertTrue(result.is_healthy())
+        self.assert_no_unhealthy_rids()
 
         self.assertNotIn(old_grandchild_path, self.catalog.uids)
         self.assertNotIn(rid, self.catalog.paths)
@@ -340,8 +332,7 @@ class TestSurgery(FunctionalTestCase):
         self.assertIs(RemoveRidOrReindexObject, doctor.get_surgery())
         self.perform_surgeries(result)
 
-        result = self.run_healthcheck()
-        self.assertTrue(result.is_healthy())
+        self.assert_no_unhealthy_rids()
 
     def test_surgery_remove_object_moved_with_parent_and_found_via_acquisition(self):
         level_1 = create(Builder('folder')
@@ -380,8 +371,7 @@ class TestSurgery(FunctionalTestCase):
         self.assertIs(RemoveRidOrReindexObject, doctor.get_surgery())
         self.perform_surgeries(result)
 
-        result = self.run_healthcheck()
-        self.assertTrue(result.is_healthy())
+        self.assert_no_unhealthy_rids()
 
     def test_surgery_add_dropped_object_to_indices(self):
         self.drop_object_from_catalog_indexes(self.parent)
@@ -403,8 +393,7 @@ class TestSurgery(FunctionalTestCase):
         self.assertIs(RemoveRidOrReindexObject, doctor.get_surgery())
         self.perform_surgeries(result)
 
-        result = self.run_healthcheck()
-        self.assertTrue(result.is_healthy())
+        self.assert_no_unhealthy_rids()
 
         self.assertDictContainsSubset(
             {'Creator': 'test_user_1_',
@@ -463,5 +452,4 @@ class TestSurgery(FunctionalTestCase):
         self.assertNotIn(rid, self.catalog.paths)
         self.assertNotIn(rid, self.catalog.data)
 
-        result = self.run_healthcheck()
-        self.assertTrue(result.is_healthy())
+        self.assert_no_unhealthy_rids()

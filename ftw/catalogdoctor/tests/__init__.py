@@ -68,6 +68,15 @@ class FunctionalTestCase(TestCase):
             healthcheck_result, catalog=self.portal_catalog)
         return scheduler.perform_surgeries()
 
+    def assert_no_unhealthy_rids(self):
+        result = self.run_healthcheck()
+        formatter = MockFormatter()
+        result.write_result(formatter)
+        msg = '\n'.join(
+            ['Expected healthy catalog but found:'] + formatter.getlines()
+        )
+        self.assertTrue(result.is_healthy(), msg=msg)
+
     def choose_next_rid(self):
         """Return a currently unused rid for testing.
 
