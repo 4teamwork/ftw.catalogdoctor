@@ -128,11 +128,24 @@ def get_catalog_data(rid=None, uid=None, idxs=None, metadata=False):
     if metadata:
         data['metadata'] = portal_catalog.getMetadataForRID(rid)
 
-    data['paths (rid->path)'] = {rid: uid}
-    # handle when we are passed a rid which is in indexes but not in uids
-    if rid not in zcatalog.paths:
-        rid = _no_entry
-    data['uids (path->rid)'] = {uid: rid}
+    # get data in uids/paths and make sure to display what is actually stored
+    # in there, not the argument we are passed in by re-fetching the
+    # information from the data structures.
+    uid_in_paths = zcatalog.paths.get(rid, _no_entry)  # placeholder when empty
+    paths_data = {rid: uid_in_paths}
+    # also get potential duplicates
+    for key, value in zcatalog.paths.items():
+        if value == uid and key != rid:
+            paths_data[key] = value
+    data['paths (rid->path)'] = paths_data
+
+    rid_in_uids = zcatalog.uids.get(uid, _no_entry)  # placeholder when empty
+    uids_data = {uid: rid_in_uids}
+    # also get potential duplicates
+    for key, value in zcatalog.uids.items():
+        if value == rid and key != uid:
+            uids_data[key] = value
+    data['uids (path->rid)'] = uids_data
 
     return data
 
