@@ -168,9 +168,16 @@ class Surgery(object):
         self.catalog = catalog
         self.unhealthy_rid = unhealthy_rid
         self.surgery_log = []
+        self.to_reindex = []
 
     def perform(self):
         raise NotImplementedError
+
+    def perform_post_op(self):
+        for obj in self.to_reindex:
+            obj.reindexObject()
+            obj_path = '/'.join(obj.getPhysicalPath())
+            self.surgery_log.append("Reindexed object at {}".format(obj_path))
 
     def unindex_rid_from_all_catalog_indexes(self, rid):
         for idx in self.catalog.indexes.values():
@@ -310,11 +317,10 @@ class RemoveOrphanedRid(Surgery):
         self.delete_rid_from_metadata(rid)
         self.change_catalog_length(-1)
 
-        if obj:
-            # the object is still there and somehow vanished from the indexes.
-            # we reindex it, this creates a rid in the catalog.
-            obj.reindexObject()
-            self.surgery_log.append("Reindexed object.")
+        # the object is still there and somehow vanished from the indexes.
+        # we reindex it, this creates a rid in the catalog.
+        if obj is not None:
+            self.to_reindex.append(obj)
 
 
 class RemoveRidOrReindexObject(Surgery):
@@ -376,8 +382,7 @@ class RemoveRidOrReindexObject(Surgery):
         self.unindex_rid_from_all_catalog_indexes(rid)
         # the object is still there and somehow vanished from the indexes.
         # we reindex to update indexes and metadata.
-        obj.reindexObject()
-        self.surgery_log.append("Reindexed object.")
+        self.to_reindex.append(obj)
 
 
 class CatalogDoctor(object):
@@ -437,18 +442,30 @@ class CatalogDoctor(object):
         self.catalog = catalog
         self.unhealthy_rid = unhealthy_rid
 
+        surgery_cls = self.get_surgery()
+        if not surgery_cls:
+            self.surgery = None
+        else:
+            self.surgery = surgery_cls(self.catalog, self.unhealthy_rid)
+
     def can_perform_surgery(self):
-        return bool(self.get_surgery())
+        return bool(self.surgery)
 
     def get_surgery(self):
         symptoms = self.unhealthy_rid.catalog_symptoms
         return self.surgeries.get(symptoms, None)
 
     def perform_surgery(self):
-        surgery_cls = self.get_surgery()
-        if not surgery_cls:
-            return None
+        if not self.can_perform_surgery():
+            return
 
-        surgery = surgery_cls(self.catalog, self.unhealthy_rid)
-        surgery.perform()
-        return surgery
+        self.surgery.perform()
+
+    def perform_post_op(self):
+        if not self.can_perform_surgery():
+            return
+
+        self.surgery.perform_post_op()
+
+    def write_result(self, formatter):
+        self.surgery.write_result(formatter)

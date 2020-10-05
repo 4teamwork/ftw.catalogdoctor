@@ -102,6 +102,42 @@ class TestSurgery(FunctionalTestCase):
 
         self.assert_no_unhealthy_rids()
 
+    def test_surgery_remove_extra_rid_with_stale_uuid_inverted_order(self):
+        # make sure symptom order is inverted order as in
+        # test_surgery_remove_extra_rid_with_stale_uuid
+        self.recatalog_object_with_new_rid(
+            self.child, drop_from_indexes=False, rid=-2000000000)
+
+        result = self.run_healthcheck()
+        self.assertFalse(result.is_healthy())
+        unhealthy = result.get_unhealthy_rids()
+        self.assertEqual(2, len(unhealthy))
+
+        self.assertEqual(
+            (
+                'in_catalog_not_in_uuid_index',
+                'in_uuid_unindex_not_in_uuid_index',
+            ),
+            result.get_symptoms(unhealthy[0].rid))
+        self.assertEqual(
+            (
+                'in_metadata_keys_not_in_uids_values',
+                'in_paths_keys_not_in_uids_values',
+                'in_uuid_index_not_in_catalog',
+                'in_uuid_unindex_not_in_catalog',
+                'uids_tuple_mismatches_paths_tuple',
+            ),
+            result.get_symptoms(unhealthy[1].rid))
+
+        doctor = CatalogDoctor(self.catalog, unhealthy[0])
+        self.assertIs(RemoveRidOrReindexObject, doctor.get_surgery())
+        doctor = CatalogDoctor(self.catalog, unhealthy[1])
+        self.assertIs(RemoveExtraRid, doctor.get_surgery())
+
+        self.perform_surgeries(result)
+
+        self.assert_no_unhealthy_rids()
+
     def test_surgery_remove_orphaned_rid_not_in_indexes(self):
         path = '/'.join(self.child.getPhysicalPath())
         self.drop_object_from_catalog_indexes(self.child)
