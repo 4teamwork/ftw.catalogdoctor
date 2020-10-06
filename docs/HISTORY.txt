@@ -5,7 +5,7 @@ Changelog
 1.1.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Defer reindex until removal from indexes is done, introduce post-op. [deiferni]
 
 
 1.1.0 (2020-09-30)

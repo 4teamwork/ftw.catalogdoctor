@@ -69,21 +69,11 @@ def surgery_command(portal_catalog, args, formatter):
         formatter.info('Catalog is healthy, no surgery is needed.')
         return
 
-    there_is_nothing_we_can_do = []
     formatter.info('Performing surgery:')
     scheduler = SurgeryScheduler(result, catalog=portal_catalog)
-    there_is_nothing_we_can_do, surgeries = scheduler.perform_surgeries()
-
-    for surgery in surgeries:
-        surgery.write_result(formatter)
-        formatter.info('')
-    if there_is_nothing_we_can_do:
-        formatter.info('The following unhealthy rids could not be fixed:')
-        for unhealthy_rid in there_is_nothing_we_can_do:
-            unhealthy_rid.write_result(formatter)
-            formatter.info('')
-
-        formatter.info('Not all health problems could be fixed, aborting.')
+    scheduler.perform_surgeries()
+    scheduler.write_result(formatter)
+    if not scheduler.is_successful():
         return
 
     processQueue()
