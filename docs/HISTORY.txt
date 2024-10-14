@@ -2,7 +2,7 @@ Changelog
 =========
 
 
-1.2.1 (unreleased)
+1.2.1 (2024-10-14)
 ------------------
 
 - Delay import of Testing module in zopectl command to not accidently create a demo storage. [buchi]
