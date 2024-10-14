@@ -5,7 +5,7 @@ Changelog
 1.2.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Delay import of Testing module in zopectl command to not accidently create a demo storage. [buchi]
 
 
 1.2.0 (2020-10-06)

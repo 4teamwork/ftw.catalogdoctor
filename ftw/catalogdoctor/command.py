@@ -4,7 +4,6 @@ from ftw.catalogdoctor.healthcheck import CatalogHealthCheck
 from ftw.catalogdoctor.scheduler import SurgeryScheduler
 from Products.CMFCore.utils import getToolByName
 from Products.CMFPlone.interfaces import IPloneSiteRoot
-from Testing.makerequest import makerequest
 from zope.component.hooks import setSite
 import argparse
 import sys
@@ -25,6 +24,10 @@ def load_site(app, path):
               file=sys.stderr)
         sys.exit(1)
 
+    # Delay import of the Testing module
+    # Importing it before the database is opened, will result in opening a
+    # DemoStorage database instead of the one from the config file.
+    from Testing.makerequest import makerequest
     app = makerequest(app)
     site = app.unrestrictedTraverse(path)
     app.REQUEST.PARENTS = [site, app]
